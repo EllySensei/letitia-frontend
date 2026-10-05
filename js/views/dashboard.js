@@ -1,4 +1,5 @@
 import { state } from '../state.js';
+import { packageLabel } from '../bookings.js';
 import { $, esc, ico, peso, fmtDate, fmtTime, pill, fill } from '../utils.js';
 import { returnRow } from './returns.js';
 
@@ -6,7 +7,7 @@ export const emptyMsg = text => state.user ? text : 'Log in to view data';
 
 export function eventRow(e, withActions) {
   return `<tr><td>${fmtDate(e.event_date)} ${fmtTime(e.start_time)}</td><td class="g">${esc(e.client_name)}</td>`
-    + `<td>${esc(e.venue_name || '—')}</td><td>${esc(e.package_name || '—')}</td><td>${pill(e.status)}</td>`
+    + `<td>${esc(e.venue_name || '—')}</td><td>${esc(packageLabel(e))}</td><td>${pill(e.status)}</td>`
     + (withActions ? `<td><button class="btn" data-m="eventDetail" data-id="${e.event_id}">View</button></td>` : '')
     + '</tr>';
 }

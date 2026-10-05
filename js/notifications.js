@@ -12,9 +12,12 @@ const TITLES = {
 const sound = new Audio('notification-bell.mp3');
 sound.preload = 'auto';
 
+const SOUND_MS = 1200; // one short ping only; raise/lower to match the mp3
+
 let items = [];
 let unread = 0;
 let timer = null;
+let soundTimer = null;
 
 function render() {
   $('#notifList').innerHTML = items.length
@@ -24,17 +27,19 @@ function render() {
         <span>${esc(n.message)}</span>
         <small>${esc(timeAgo(n.created_at))} · ${n.is_read ? 'Read' : 'Click to mark as read'}</small>
       </button>`).join('')
-    : '<p class="account-status">No notifications</p>';
+    : '<p class="notif-empty">No notifications</p>';
   $('#notifCount').textContent = unread;
   $('#notifCount').hidden = unread === 0;
 }
 
 function playSound() {
-  sound.currentTime = 0;
+  stopSound();
   sound.play()?.catch(() => {}); // autoplay may be blocked until the user interacts
+  soundTimer = setTimeout(stopSound, SOUND_MS);
 }
 
 export function stopSound() {
+  clearTimeout(soundTimer);
   sound.pause();
   sound.currentTime = 0;
 }
@@ -74,16 +79,6 @@ export async function markRead(id) {
     await api.notifications.markRead(id);
     n.is_read = 1;
     unread = Math.max(0, unread - 1);
-    render();
-  } catch (err) { toastError(err); }
-}
-
-export async function markAllRead() {
-  stopSound();
-  try {
-    await api.notifications.markAllRead();
-    items.forEach(n => n.is_read = 1);
-    unread = 0;
     render();
   } catch (err) { toastError(err); }
 }

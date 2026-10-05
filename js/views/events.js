@@ -1,5 +1,6 @@
-import { state } from '../state.js';
-import { $, $$, esc, peso, fill } from '../utils.js';
+import { state, isAdmin } from '../state.js';
+import { packageOptionsHtml } from '../bookings.js';
+import { $, $$, esc, fill, isoDate } from '../utils.js';
 import { eventRow, emptyMsg } from './dashboard.js';
 
 // Rebuilding the booking form must not wipe what the user has already picked or typed.
@@ -13,8 +14,10 @@ function keepValue(sel, html) {
 export function renderEvents() {
   keepValue('#bClient', '<option value="">Select a Client</option>'
     + state.clients.map(c => `<option value="${c.client_id}">${esc(c.full_name)}</option>`).join(''));
-  keepValue('#bPkg', '<option value="">No package</option>'
-    + state.packages.map(p => `<option value="${p.package_id}">${esc(p.name)} (${peso(p.base_price)})</option>`).join(''));
+  keepValue('#bPkg', packageOptionsHtml());
+  $('#bDate').min = isoDate();
+  $('#bSubmit').disabled = !isAdmin();
+  $('#bSubmit').title = isAdmin() ? '' : 'Admin log in required to book events';
 
   const typed = new Map($$('#bItems .qty').map(q => [q.dataset.item, q.value]));
   fill('#bItems', state.inventory, 4, i => `<tr><td>${esc(i.name)}</td><td>${esc(i.category || '—')}</td>`

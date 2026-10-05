@@ -87,6 +87,9 @@ export const api = {
   },
   packages: {
     list: () => get('/packages'),
+    create: body => post('/packages', body),
+    remove: id => del(`/packages/${id}`),
+    removeAll: () => del('/packages', { confirm: true }),
   },
   inventory: {
     list: () => get('/inventory', ALL),
@@ -113,7 +116,6 @@ export const api = {
   notifications: {
     list: () => get('/notifications', { limit: 30 }),
     markRead: id => patch(`/notifications/${id}/read`),
-    markAllRead: () => patch('/notifications/read-all'),
   },
   reminders: {
     send: clientId => post('/reminders', clientId ? { client_id: Number(clientId) } : {}),

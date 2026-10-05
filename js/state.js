@@ -1,6 +1,4 @@
 import { api } from './api.js';
-import { BOOKINGS_KEY } from './config.js';
-import { readLocal } from './storage.js';
 import { isoDate } from './utils.js';
 
 const empty = () => ({
@@ -18,8 +16,6 @@ const empty = () => ({
 export const state = {
   user: null, // { user_id, username, full_name, role } once signed in
   ...empty(),
-  // Guest booking requests have no public API endpoint yet, so they stay in this browser.
-  guestBookings: readLocal(BOOKINGS_KEY, []),
 };
 
 export const isAdmin = () => state.user?.role === 'admin';

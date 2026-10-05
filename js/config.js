@@ -3,6 +3,5 @@
 export const API_BASE = location.port === '3000' ? '' : 'http://localhost:3000';
 
 export const TOKEN_KEY = 'laetitia-token';
-export const BOOKINGS_KEY = 'laetitia-demo-bookings';
 
 export const NOTIFICATION_POLL_MS = 60_000;

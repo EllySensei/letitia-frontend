@@ -3,9 +3,10 @@ import { api } from './api.js';
 import { state, isAdmin } from './state.js';
 import { refresh } from './refresh.js';
 import { signOut } from './session.js';
-import { createBooking } from './bookings.js';
+import { createBooking, bookingProblem, CUSTOM } from './bookings.js';
+import { resizeImage } from './images.js';
 import { openModal, closeModal } from './modal.js';
-import { markRead, markAllRead, stopSound } from './notifications.js';
+import { markRead, stopSound } from './notifications.js';
 import { renderInventory, renderPayments } from './views/index.js';
 import { $, $$, toast, toastError } from './utils.js';
 
@@ -58,41 +59,89 @@ const deleteAllClients = adminAction(async () => {
   return (await api.clients.removeAll()).message;
 });
 
+const deleteAllPackages = adminAction(async () => {
+  if (!confirm('Delete all packages? Events already booked keep their package name.')) return false;
+  return (await api.packages.removeAll()).message;
+});
+
 const restockAll = adminAction(async () => {
   if (!confirm('Return all damaged or missing rental units to service?')) return false;
   return (await api.inventory.restockAll()).message;
 });
 
 function clearBookingForm() {
-  ['bClient', 'bDate', 'bTime', 'bVenue', 'bPkg', 'bPay'].forEach(id => $('#' + id).value = '');
+  ['bClient', 'bDate', 'bTime', 'bVenue', 'bPkg', 'bCustom', 'bContract', 'bPay'].forEach(id => $('#' + id).value = '');
+  $('#bCustom').hidden = true;
   $$('#bItems .qty').forEach(q => q.value = '');
 }
 
 const submitBookingForm = adminAction(async () => {
-  if (!$('#bClient').value || !$('#bDate').value) { toast('Pumili ng client at date'); return false; }
-  await createBooking({
+  const booking = {
     client_id: $('#bClient').value,
     event_date: $('#bDate').value,
     start_time: $('#bTime').value,
     venue_name: $('#bVenue').value.trim(),
-    package_id: $('#bPkg').value,
+    package: $('#bPkg').value,
+    custom: $('#bCustom').value,
+    contract_value: $('#bContract').value === '' ? undefined : Number($('#bContract').value),
     downpayment: Number($('#bPay').value) || undefined,
     items: $$('#bItems .qty').filter(q => Number(q.value) > 0).map(q => ({ item_id: Number(q.dataset.item), qty: Number(q.value) })),
-  });
+  };
+  const problem = bookingProblem(booking);
+  if (problem) { toast(problem); return false; }
+  await createBooking(booking);
   clearBookingForm();
   return 'Booking submitted ✓';
 });
 
+function togglePassword(btn) {
+  const input = $('#' + btn.dataset.pw);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+  btn.setAttribute('aria-pressed', String(show));
+}
+
+// Resizes the picked package picture and shows it; the Add Package modal sends the preview's data URL.
+async function previewPackageImage(input) {
+  const preview = $('#pkgPreview');
+  const file = input.files[0];
+  preview.hidden = true;
+  preview.removeAttribute('src');
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { input.value = ''; return toast('Image file lang ang puwede'); }
+  try {
+    preview.src = await resizeImage(file);
+    preview.hidden = false;
+  } catch {
+    input.value = '';
+    toast('Hindi mabasa ang picture');
+  }
+}
+
+function onChange(e) {
+  if (e.target.id === 'f_pkgImage') return previewPackageImage(e.target);
+  // "Custom / self order" reveals a text box for describing it.
+  const pkgSelect = e.target.closest('[data-pkgsel]');
+  if (!pkgSelect) return;
+  const custom = pkgSelect.id === 'bPkg' ? $('#bCustom') : $(`#${pkgSelect.id}Custom`);
+  if (!custom) return;
+  custom.hidden = pkgSelect.value !== CUSTOM;
+  if (!custom.hidden) custom.focus();
+}
+
 async function onClick(e) {
   const t = e.target;
 
+  const pw = t.closest('[data-pw]');
+  if (pw) return togglePassword(pw);
   if (t.closest('#accountBtn')) return setOpen('#accountMenu', '#accountBtn', $('#accountMenu').classList.contains('hidden'));
   const accountAction = t.closest('[data-account-action]');
   if (accountAction) {
     setOpen('#accountMenu', '#accountBtn', false);
     const action = accountAction.dataset.accountAction;
     if (action === 'login') openModal('adminLogin');
-    if (action === 'book') openModal('guestBooking');
+    if (action === 'book') openModal('event');
     if (action === 'logout') { await signOut(); toast('Logged out'); }
     return;
   }
@@ -106,7 +155,6 @@ async function onClick(e) {
     stopSound();
     return setOpen('#notifPanel', '#notifBtn', false);
   }
-  if (t.closest('#readAllNotif')) return markAllRead();
   const notification = t.closest('[data-notification]');
   if (notification) return markRead(notification.dataset.notification);
 
@@ -124,6 +172,7 @@ async function onClick(e) {
 
 export function bindActions() {
   document.addEventListener('click', onClick);
+  document.addEventListener('change', onChange);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     setOpen('#accountMenu', '#accountBtn', false);
@@ -132,6 +181,7 @@ export function bindActions() {
 
   $('#delAllInv').onclick = deleteAllInventory;
   $('#delAllCl').onclick = deleteAllClients;
+  $('#delAllPkg').onclick = deleteAllPackages;
   $('#restockAll').onclick = restockAll;
   $('#bCancel').onclick = clearBookingForm;
   $('#bSubmit').onclick = submitBookingForm;

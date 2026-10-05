@@ -1,4 +1,4 @@
-import { state } from '../state.js';
+import { state, isAdmin } from '../state.js';
 import { $, ico, fmtDate, isoDate } from '../utils.js';
 
 const initials = name => name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
@@ -16,5 +16,6 @@ export function renderHeader() {
   $('#accountStatus').textContent = u ? `Signed in as ${u.username}` : 'Browsing as a guest';
   $('#adminLoginAction').hidden = Boolean(u);
   $('#logoutAction').hidden = !u;
+  $('[data-account-action="book"]').hidden = !isAdmin();
   $('#accountBtn').setAttribute('aria-label', `Account menu, ${u ? u.role : 'guest'}`);
 }
