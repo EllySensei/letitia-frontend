@@ -1,6 +1,12 @@
 export const $ = s => document.querySelector(s);
 export const $$ = s => [...document.querySelectorAll(s)];
 
+// Switches the visible page and highlights its sidebar link.
+export function showPage(page) {
+  $$('.page').forEach(x => x.classList.toggle('on', x.id === page));
+  $$('aside a').forEach(a => a.classList.toggle('on', a.dataset.p === page));
+}
+
 export const ico = (n, c = '') => `<svg class="i ${c}"><use href="#i-${n}"/></svg>`;
 export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 });
@@ -41,6 +47,9 @@ export const isoDate = (days = 0) => {
 
 const WARN = ['Low Stock', 'Out of Stock', 'Overdue', 'Damaged', 'Missing', 'Cancelled', 'Pending'];
 export const pill = (t, cls = WARN.includes(t) ? 'low' : '') => `<span class="pill ${cls}">${esc(t || 'OK')}</span>`;
+
+// A record's database id, shown as the first column of every table.
+export const idCell = id => `<td class="id">${id == null ? '—' : `#${id}`}</td>`;
 
 export function fill(sel, rows, cols, tpl, msg) {
   $(sel).innerHTML = rows.length ? rows.map(tpl).join('') : `<tr><td class="empty" colspan="${cols}">${esc(msg)}</td></tr>`;

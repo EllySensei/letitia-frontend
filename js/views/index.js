@@ -5,6 +5,7 @@ import { renderPackages } from './packages.js';
 import { renderInventory } from './inventory.js';
 import { renderReturns } from './returns.js';
 import { renderPayments } from './payments.js';
+import { renderDatabase } from './database.js';
 
 export { renderInventory, renderPayments };
 
@@ -16,4 +17,5 @@ export function render() {
   renderInventory();
   renderReturns();
   renderPayments();
+  renderDatabase();
 }

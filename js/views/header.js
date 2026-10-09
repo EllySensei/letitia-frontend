@@ -8,6 +8,8 @@ export function renderHeader() {
   $('#pullDate').textContent = 'Tomorrow · ' + fmtDate(isoDate(1));
 
   const u = state.user;
+  // Signed out: only the login screen shows (admin.html #gate).
+  document.body.classList.toggle('locked', !u);
   const name = u ? (u.full_name || u.username) : 'Guest';
   $('#uName').textContent = name;
   $('#uRole').textContent = !u ? 'Guest booking' : u.role === 'admin' ? 'Administrator' : `${u.role} (view only)`;

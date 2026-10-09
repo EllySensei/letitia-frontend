@@ -22,10 +22,10 @@ let soundTimer = null;
 function render() {
   $('#notifList').innerHTML = items.length
     ? items.map(n => `
-      <button class="notif-item ${n.is_read ? 'read' : 'unread'}" type="button" data-notification="${n.notification_id}">
+      <button class="notif-item ${n.is_read ? 'read' : 'unread'}" type="button" data-notification="${n.notification_id}"${n.event_id ? ` data-event="${n.event_id}"` : ''}>
         <strong>${esc(TITLES[n.type] || 'Notification')}</strong>
         <span>${esc(n.message)}</span>
-        <small>${esc(timeAgo(n.created_at))} · ${n.is_read ? 'Read' : 'Click to mark as read'}</small>
+        <small>${esc(timeAgo(n.created_at))} · ${n.event_id ? `${n.is_read ? 'Read · ' : ''}Click to view the event` : n.is_read ? 'Read' : 'Click to mark as read'}</small>
       </button>`).join('')
     : '<p class="notif-empty">No notifications</p>';
   $('#notifCount').textContent = unread;

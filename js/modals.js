@@ -5,26 +5,101 @@
 import { api } from './api.js';
 import { state, isAdmin } from './state.js';
 import { signIn } from './session.js';
-import { createBooking, bookingProblem, packageOptionsHtml, packageLabel } from './bookings.js';
-import { field, password, textarea, select, val, num, note } from './form.js';
-import { $, esc, peso, fmtDate, fmtTime, pill, isoDate, toast } from './utils.js';
+import {
+  createBooking, bookingProblem, bookingFields, readBooking, venueLabel, packageLabel, EVENT_TYPES, PAST_MSG,
+} from './bookings.js';
+import {
+  field, password, textarea, select, choice, choiceVal, nameFields, readName, addressFields, readAddress, val, num, note,
+  phoneField, phoneVal, picture, pictureVal, changed,
+} from './form.js';
+import { isoFor } from './phone.js';
+import { $, esc, peso, fmtDate, fmtTime, pill, isoDate, toast, idCell } from './utils.js';
 
 const METHODS = [['Cash', 'Cash'], ['GCash', 'GCash'], ['Bank Transfer', 'Bank Transfer']];
 const MONEY = 'min="0" step="0.01" placeholder="₱"';
+const PAYMENT_TYPES = [['downpayment', 'Downpayment'], ['balance', 'Balance'], ['deposit', 'Security deposit'],
+  ['damage_fee', 'Damage / missing fee'], ['refund', 'Refund']];
+// Event statuses an admin can set; Ongoing follows from the date and Cancelled has its own button.
+const EVENT_STATUSES = [['Pending', 'Pending'], ['Approved', 'Approved'], ['Completed', 'Completed']];
 
-const clientOptions = () => state.clients.map(c => [c.client_id, c.full_name]);
+const NO_CHANGES = 'No changes to save';
+const isEmpty = body => !Object.keys(body).length;
+
+// The record an edit button points at, from the lists already loaded.
+function record(list, key, id, what) {
+  const found = list.find(x => String(x[key]) === String(id));
+  if (!found) throw new Error(`${what} not found; refresh the page`);
+  return found;
+}
+
+// Starting choices for the Category and Unit pickers; ones already in use are added to them.
+const CATEGORIES = ['Prop', 'Backdrop', 'Furniture', 'Lighting', 'Linens', 'Tableware', 'Florals', 'Signage', 'Balloon Stand'];
+const UNITS = ['pcs', 'sets', 'packs', 'boxes', 'rolls', 'bottles', 'meters', 'kg', 'liters'];
+const withUsed = (base, used) => [...new Set([...base, ...used.filter(Boolean)])];
+
+// Records that can be archived, for the "Archived" list. `api` names the resource in api.js.
+const ARCHIVES = {
+  clients: { title: 'Archived clients', head: ['Client', 'Contact'], load: () => api.clients.archived(),
+    row: c => [c.full_name, c.phone || c.email || '—'], key: c => ['clients', c.client_id, c.full_name] },
+  packages: { title: 'Archived packages', head: ['Package', 'Price'], load: () => api.packages.archived(),
+    row: p => [p.name, peso(p.base_price)], key: p => ['packages', p.package_id, p.name] },
+  inventory: { title: 'Archived inventory', head: ['Code', 'Item'],
+    load: async () => [...await api.inventory.archived(), ...await api.consumables.archived()],
+    row: i => [i.item_code || '—', i.name],
+    key: i => i.item_id ? ['inventory', i.item_id, i.name] : ['consumables', i.consumable_id, i.name] },
+};
+
 const owingOptions = () => state.receivables.map(r => [r.event_id, `${r.client_name} — ${fmtDate(r.event_date)} (${peso(r.remaining)} left)`]);
 const eventOptions = () => state.events.filter(e => e.status !== 'Cancelled').map(e => [e.event_id, `#${e.event_id} ${e.client_name} — ${fmtDate(e.event_date)}`]);
 const lineOptions = statuses => state.returns.filter(r => statuses.includes(r.status))
   .map(r => [r.event_item_id, `${r.qty} × ${r.item_name} — ${r.client_name} (${r.status})`]);
 
-// Package select plus the text box that appears for "Custom / self order" (see actions.js).
-const packageField = id => `<label for="f_${id}">Event or package<span class="req" aria-hidden="true">*</span></label>`
-  + `<select id="f_${id}" required data-pkgsel="${id}">${packageOptionsHtml()}</select>`
-  + `<input id="f_${id}Custom" class="pkg-custom" type="text" maxlength="255" placeholder="Describe your custom / self order" hidden>`;
-
 const table = (head, rows) => `<div class="tw"><table class="mini"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead>`
   + `<tbody>${rows.length ? rows.join('') : `<tr><td class="empty" colspan="${head.length}">Nothing to show</td></tr>`}</tbody></table></div>`;
+
+// ---- fields shared by the add and edit forms ----
+
+const clientFields = () => nameFields()
+  + '<div class="frow2">'
+  + `<div>${phoneField('contact', 'Contact number', { req: true })}</div>`
+  + `<div>${field('email', 'Email', 'email', { attrs: 'maxlength="150" placeholder="Optional"' })}</div></div>`
+  + addressFields();
+
+const packageFields = (image = '') => field('pkgName', 'Package Name', 'text', { req: true, attrs: 'maxlength="120"' })
+  + choice('pkgType', 'Type', EVENT_TYPES, { req: true, max: 50, other: 'e.g. Reunion' })
+  + field('pkgPrice', 'Price', 'number', { req: true, attrs: 'min="0.01" step="0.01" placeholder="₱"' })
+  + textarea('pkgDesc', 'Inclusions / Description', 'e.g. Balloon arch, backdrop, LED lights', { rows: 4, attrs: 'maxlength="2000"' })
+  + picture('pkgImage', 'Package Picture', 'pkgPreview', image);
+
+const readPackage = () => ({ name: val('pkgName'), type: choiceVal('pkgType'), base_price: num('pkgPrice'), description: val('pkgDesc'), image: pictureVal('pkgPreview') });
+
+// The collation in the database ignores case, so "Gold" and "gold" are the same name.
+const packageNameTaken = (name, exceptId) => state.packages.some(p => p.package_id !== exceptId && p.name.toLowerCase() === name.toLowerCase());
+
+const itemNameAndCode = () => '<div class="frow2">'
+  + `<div>${field('name', 'Item name', 'text', { req: true, attrs: 'maxlength="120"' })}</div>`
+  + `<div>${field('code', 'Item code', 'text', { attrs: 'maxlength="30" placeholder="Automatic if blank" data-check="code"' })}</div></div>`;
+
+const rentalFields = (image = '') => choice('category', 'Category', withUsed(CATEGORIES, state.inventory.map(i => i.category)), { req: true, max: 100, other: 'New category' })
+  + '<div class="frow2">'
+  + `<div>${field('qty', 'Quantity owned', 'number', { req: true, attrs: 'min="0" step="1"' })}</div>`
+  + `<div>${field('price', 'Rental price (₱)', 'number', { attrs: MONEY, hint: '0 = package use only, hidden from the storefront' })}</div></div>`
+  + textarea('itemDesc', 'Description (shown on the storefront)', 'e.g. Classic white chair that pairs with any theme', { attrs: 'maxlength="2000"' })
+  + picture('itemImage', 'Picture', 'itemPreview', image);
+
+const readRental = () => ({
+  name: val('name'), item_code: val('code') || undefined, category: choiceVal('category'), qty_total: num('qty'),
+  rental_price: num('price'), description: val('itemDesc'), image: pictureVal('itemPreview'),
+});
+
+const consumableFields = () => '<div class="frow3">'
+  + `<div>${field('stock', 'Quantity in stock', 'number', { req: true, attrs: 'min="0" step="1"' })}</div>`
+  + `<div>${choice('unit', 'Unit', withUsed(UNITS, state.consumables.map(c => c.unit)), { req: true, max: 30, placeholder: 'Select unit', other: 'e.g. dozens' })}</div>`
+  + `<div>${field('reorder', 'Reorder when at or below', 'number', { attrs: 'min="0" step="1" placeholder="0"' })}</div></div>`;
+
+const readConsumable = () => ({
+  name: val('name'), item_code: val('code') || undefined, unit: choiceVal('unit'), current_level: num('stock'), reorder_level: num('reorder'),
+});
 
 function printSheet(title, html) {
   const w = window.open('', '_blank');
@@ -49,28 +124,39 @@ export const MODALS = {
 
   client: {
     title: 'New Client', ok: 'Add Client', admin: true,
-    body: () => field('name', 'Client Name', 'text', { req: true }) + field('contact', 'Contact Number', 'tel')
-      + field('email', 'Email', 'email') + field('address', 'Address'),
+    body: clientFields,
     async run() {
-      if (!val('name')) return false;
-      await api.clients.create({ full_name: val('name'), phone: val('contact'), email: val('email'), billing_address: val('address') });
+      await api.clients.create({ ...readName(), phone: phoneVal('contact'), email: val('email') || undefined, ...readAddress() });
       return 'Client added';
     },
   },
 
+  editClient: {
+    title: 'Edit Client', ok: 'Save Changes', admin: true,
+    body(ctx) {
+      ctx.saved = record(state.clients, 'client_id', ctx.id, 'Client');
+      return clientFields();
+    },
+    fill: ({ saved: c }) => ({
+      first: c.first_name, middle: c.middle_name, last: c.last_name, contactCc: isoFor(c.phone_country_code), contact: c.phone_number,
+      email: c.email, street: c.street, barangay: c.barangay, city: c.city_municipality, province: c.province,
+    }),
+    async run({ saved: c }) {
+      const body = changed({ ...c, phone: `${c.phone_country_code ?? ''}${c.phone_number ?? ''}` }, {
+        first_name: val('first'), middle_name: val('middle'), last_name: val('last'), phone: phoneVal('contact'), email: val('email'),
+        street: val('street'), barangay: val('barangay'), city_municipality: val('city'), province: val('province'),
+      });
+      if (isEmpty(body)) return NO_CHANGES;
+      await api.clients.update(c.client_id, body);
+      return `${val('first')} ${val('last')} updated`;
+    },
+  },
+
   event: {
-    title: 'New Booking / Event', ok: 'Submit Booking', admin: true,
-    body: () => select('client', 'Select a Client', clientOptions(), { req: true, empty: 'Add a client first' })
-      + field('date', 'Event Date', 'date', { req: true, attrs: `min="${isoDate()}"` }) + field('time', 'Event Time', 'time')
-      + field('venue', 'Venue / Address') + packageField('package')
-      + field('contract', 'Contract value (blank = package price)', 'number', { attrs: MONEY })
-      + field('pay', 'Payment / Downpayment', 'number', { attrs: MONEY }) + select('method', 'Payment method', METHODS),
+    title: 'New Booking / Event', ok: 'Submit Booking', admin: true, wide: true,
+    body: () => bookingFields(),
     async run() {
-      const booking = {
-        client_id: val('client'), event_date: val('date'), start_time: val('time'), venue_name: val('venue'),
-        package: val('package'), custom: val('packageCustom'),
-        contract_value: num('contract'), downpayment: num('pay'), method: val('method'),
-      };
+      const booking = readBooking();
       const problem = bookingProblem(booking);
       if (problem) { toast(problem); return 'keep'; }
       await createBooking(booking);
@@ -82,63 +168,180 @@ export const MODALS = {
     title: 'Event details', cancel: 'Close',
     async body(ctx) {
       const e = ctx.event = await api.events.get(ctx.id);
-      return note(`<b>${esc(e.client_name)}</b> · event #${e.event_id}<br>${fmtDate(e.event_date)} ${fmtTime(e.start_time)} · ${esc(e.venue_name || 'No venue')}`
-          + `<br>Package: ${esc(packageLabel(e))} · Status: ${esc(e.status)}`
-          + `<br>Contract ${peso(e.contract_value)} · Paid ${peso(e.paid_amount)} · Remaining ${peso(e.remaining)}`)
+      return note(`<b>${esc(e.client_name)}</b> · event #${e.event_id}${e.source === 'online' ? ' <span class="pill web">Online</span>' : ''}`
+          + `<br>${esc(e.event_type || 'Event type not set')} · ${fmtDate(e.event_date)} ${fmtTime(e.start_time)}`
+          + `<br>${e.venue_name ? `${esc(e.venue_name)}, ` : ''}${esc(e.venue_address || 'No venue address')}`
+          + `<br>Package: ${esc(e.package_name || (e.custom_order ? 'Custom order' : '—'))} · Status: ${esc(e.status)}`
+          + `<br>Total price ${peso(e.contract_value)} · Paid ${peso(e.paid_amount)} · Remaining ${peso(e.remaining)}`)
+        + (e.custom_order && !e.package_name ? `<label>Custom order</label><p class="order-notes">${esc(e.custom_order)}</p>` : '')
+        + (e.setup_notes ? `<label>Order notes</label><p class="order-notes">${esc(e.setup_notes)}</p>` : '')
         + '<label>Rental items</label>'
-        + table(['Item', 'Qty', 'Return'], e.items.map(i => `<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${pill(i.return_status)}</td></tr>`))
+        + table(['ID', 'Item', 'Qty', 'Return'], e.items.map(i => `<tr>${idCell(i.event_item_id)}<td>${esc(i.name)}</td><td>${i.qty}</td><td>${pill(i.return_status)}</td></tr>`))
         + '<label>Payments</label>'
-        + table(['Date', 'Type', 'Amount'], e.payments.map(p => `<tr><td>${fmtDate(p.paid_at)}</td><td>${esc(p.type)}</td><td>${peso(p.amount)}</td></tr>`));
+        + table(['ID', 'Date', 'Type', 'Amount', ''], e.payments.map(p => `<tr>${idCell(p.payment_id)}<td>${fmtDate(p.paid_at)}</td><td>${esc(p.type)}</td><td>${peso(p.amount)}</td>`
+          + `<td>${isAdmin() ? `<button class="btn" data-m="editPayment" data-id="${p.payment_id}" data-event="${e.event_id}">Edit</button>` : ''}</td></tr>`))
+        + (isAdmin() && e.status !== 'Cancelled' ? `<div class="row"><button class="btn blue" data-m="editEvent" data-id="${e.event_id}">Edit event details</button></div>` : '');
     },
-    ok: ctx => isAdmin() && !['Cancelled', 'Completed'].includes(ctx.event.status) ? 'Cancel event' : null,
+    // Pending orders and inquiries can be approved; anything unfinished can be cancelled.
+    ok: ctx => isAdmin() && ctx.event.status === 'Pending' ? 'Approve booking' : null,
     async run(ctx) {
+      await api.events.update(ctx.event.event_id, { status: 'Approved' });
+      return `Event #${ctx.event.event_id} approved`;
+    },
+    alt: ctx => isAdmin() && !['Cancelled', 'Completed'].includes(ctx.event.status) ? 'Cancel event' : null,
+    async runAlt(ctx) {
       if (!confirm(`Cancel event #${ctx.event.event_id} for ${ctx.event.client_name}?`)) return 'keep';
       await api.events.cancel(ctx.event.event_id);
       return 'Event cancelled';
     },
   },
 
+  editEvent: {
+    title: ctx => `Edit event #${ctx.id}`, ok: 'Save Changes', admin: true, wide: true,
+    async body(ctx) {
+      const e = await api.events.get(ctx.id);
+      if (e.status === 'Cancelled') throw new Error('Cancelled events cannot be edited');
+      // Compared against the form: the form shows times as HH:MM, and an Ongoing event is stored as Approved.
+      ctx.saved = { ...e, start_time: (e.start_time || '').slice(0, 5), status: e.status === 'Ongoing' ? 'Approved' : e.status };
+      const pulled = e.items.some(i => i.pull_status !== 'Pending' && !['Returned', 'Damaged', 'Missing'].includes(i.return_status));
+      return note(`<b>${esc(e.client_name)}</b> · ${esc(packageLabel(e))} · paid so far ${peso(e.paid_amount)}`
+          + '<br>The client, package and rental items stay as booked. To change those, cancel the event and book it again.')
+        + choice('etype', 'Purpose / type of event', EVENT_TYPES, { req: true, other: 'e.g. Reunion' })
+        + '<div class="frow2">'
+        + `<div>${field('date', 'Event date', 'date', {
+          req: true, attrs: pulled ? 'disabled' : '',
+          hint: pulled ? 'Items have already been pulled, so the date can no longer change.' : 'Moving the date checks that the rental items are free on the new date.',
+        })}</div>`
+        + `<div>${field('time', 'Event time', 'time')}</div></div>`
+        + field('venue', 'Venue name', 'text', { attrs: 'maxlength="150" placeholder="e.g. Grand Ballroom (optional)"' })
+        + addressFields('v', { legend: 'Venue address' })
+        + (e.package_id ? '' : textarea('custom', 'Custom order', 'What should we prepare?', { rows: 4, attrs: 'maxlength="2000"' }))
+        + textarea('notes', 'Order notes', 'Setup instructions, theme, reminders…', { attrs: 'maxlength="5000"' })
+        + '<div class="frow2">'
+        + `<div>${field('contract', 'Total price charged to the client (₱)', 'number', {
+          req: true, attrs: `min="${e.paid_amount}" step="0.01" placeholder="₱"`, hint: e.paid_amount ? `Can't be less than the ${peso(e.paid_amount)} already paid.` : '',
+        })}</div>`
+        + `<div>${select('status', 'Status', EVENT_STATUSES)}</div></div>`;
+    },
+    fill: ({ saved: e }) => ({
+      etype: e.event_type, date: e.event_date, time: e.start_time, venue: e.venue_name,
+      vstreet: e.venue_street, vbarangay: e.venue_barangay, vcity: e.venue_city_municipality, vprovince: e.venue_province,
+      custom: e.custom_order, notes: e.setup_notes, contract: e.contract_value, status: e.status,
+    }),
+    async run({ saved: e }) {
+      const body = changed(e, {
+        event_type: choiceVal('etype'), event_date: val('date'), start_time: val('time'), venue_name: val('venue'),
+        venue_street: val('vstreet'), venue_barangay: val('vbarangay'), venue_city_municipality: val('vcity'), venue_province: val('vprovince'),
+        custom_order: e.package_id ? undefined : val('custom'), setup_notes: val('notes'), contract_value: num('contract'), status: val('status'),
+      });
+      if (body.event_date && body.event_date < isoDate()) { toast(PAST_MSG); return 'keep'; }
+      if (isEmpty(body)) return NO_CHANGES;
+      await api.events.update(e.event_id, body);
+      return `Event #${e.event_id} updated`;
+    },
+  },
+
+  // Corrects a recorded payment; ctx.event is its event.
+  editPayment: {
+    title: ctx => `Edit payment #${ctx.id}`, ok: 'Save Changes', admin: true,
+    async body(ctx) {
+      const e = await api.events.get(ctx.event);
+      ctx.saved = record(e.payments, 'payment_id', ctx.id, 'Payment');
+      return note(`Event #${e.event_id} · <b>${esc(e.client_name)}</b> · total ${peso(e.contract_value)}, paid ${peso(e.paid_amount)}, recorded ${fmtDate(ctx.saved.paid_at)}`)
+        + select('type', 'Type', PAYMENT_TYPES)
+        + field('amount', 'Amount', 'number', { req: true, attrs: 'min="0.01" step="0.01" placeholder="₱"' })
+        + choice('method', 'Method', METHODS.map(([v]) => v), { placeholder: 'Not recorded', max: 50, other: 'e.g. Maya' })
+        + field('ref', 'Reference no. (optional)', 'text', { attrs: 'maxlength="100"' });
+    },
+    fill: ({ saved: p }) => ({ type: p.type, amount: p.amount, method: p.method, ref: p.reference_no }),
+    async run({ saved: p }) {
+      const body = changed(p, { type: val('type'), amount: num('amount'), method: choiceVal('method'), reference_no: val('ref') });
+      if (isEmpty(body)) return NO_CHANGES;
+      await api.payments.update(p.payment_id, body);
+      return `Payment #${p.payment_id} updated`;
+    },
+  },
+
   package: {
     title: 'Add Package', ok: 'Add Package', admin: true,
-    body: () => field('pkgName', 'Package Name', 'text', { req: true, attrs: 'maxlength="120"' })
-      + select('pkgType', 'Type', [['Wedding', 'Wedding'], ['Birthday', 'Birthday'], ['Other', 'Other']])
-      + field('pkgPrice', 'Price', 'number', { req: true, attrs: MONEY })
-      + textarea('pkgDesc', 'Inclusions / Description', 'e.g. Balloon arch, backdrop, LED lights')
-      + field('pkgImage', 'Package Picture', 'file', { attrs: 'accept="image/*"' })
-      + '<img id="pkgPreview" class="pkg-preview" alt="Package picture preview" hidden>',
+    body: () => packageFields(),
     async run() {
-      const name = val('pkgName');
-      if (!name || !(num('pkgPrice') > 0)) return false;
-      if (state.packages.some(p => p.name.toLowerCase() === name.toLowerCase())) { toast('May package na may ganitong pangalan'); return 'keep'; }
-      // The preview already holds the resized picture as a data URL (set in actions.js).
-      const preview = $('#pkgPreview');
-      await api.packages.create({
-        name, type: val('pkgType'), base_price: num('pkgPrice'), description: val('pkgDesc'),
-        image: preview.hidden ? undefined : preview.src,
-      });
+      const pkg = readPackage();
+      if (packageNameTaken(pkg.name)) { toast('May package na may ganitong pangalan'); return 'keep'; }
+      await api.packages.create(pkg);
       return 'Package added';
+    },
+  },
+
+  editPackage: {
+    title: 'Edit Package', ok: 'Save Changes', admin: true,
+    body(ctx) {
+      ctx.saved = record(state.packages, 'package_id', ctx.id, 'Package');
+      return packageFields(ctx.saved.image);
+    },
+    fill: ({ saved: p }) => ({ pkgName: p.name, pkgType: p.type, pkgPrice: p.base_price, pkgDesc: p.description }),
+    async run({ saved: p }) {
+      const body = changed(p, readPackage());
+      if (body.name && packageNameTaken(body.name, p.package_id)) { toast('May package na may ganitong pangalan'); return 'keep'; }
+      if (isEmpty(body)) return NO_CHANGES;
+      await api.packages.update(p.package_id, body);
+      return `${val('pkgName')} updated`;
     },
   },
 
   item: {
     title: 'Add Inventory Item', ok: 'Add Item', admin: true,
-    body: () => select('kind', 'Type', [['rental', 'Rental item / prop'], ['consumable', 'Consumable']])
-      + field('name', 'Item Name', 'text', { req: true }) + field('category', 'Category (rental items)', 'text', { attrs: 'placeholder="Prop"' })
-      + field('unit', 'Unit (consumables)', 'text', { attrs: 'placeholder="pcs, kg, packs"' })
-      + field('qty', 'Quantity', 'number', { attrs: 'min="0"' }) + field('reorder', 'Reorder Level', 'number', { attrs: 'min="0"' })
-      + field('price', 'Rental price (rental items)', 'number', { attrs: MONEY }),
+    // Fields in a data-for box only apply to that kind; actions.js shows the right ones.
+    body: () => select('kind', 'Type', [['rental', 'Rental item / prop (comes back after the event)'], ['consumable', 'Consumable (used up)']],
+      { attrs: 'data-kind-switch' })
+      + itemNameAndCode()
+      + `<div data-for="rental">${rentalFields()}</div>`
+      + `<div data-for="consumable" hidden>${consumableFields()}</div>`,
     async run() {
-      if (!val('name')) return false;
-      if (val('kind') === 'consumable') {
-        if (!val('unit')) return false;
-        await api.consumables.create({ name: val('name'), unit: val('unit'), current_level: num('qty'), reorder_level: num('reorder') });
-      } else {
-        if (num('qty') === undefined) return false;
-        await api.inventory.create({
-          name: val('name'), category: val('category') || 'Prop', qty_total: num('qty'), reorder_level: num('reorder'), rental_price: num('price'),
-        });
-      }
+      if (val('kind') === 'consumable') await api.consumables.create(readConsumable());
+      else await api.inventory.create(readRental());
       return 'Item added';
+    },
+  },
+
+  // ctx.kind is 'rental' or 'consumable', as on the inventory table's buttons.
+  editItem: {
+    title: ctx => ctx.kind === 'consumable' ? 'Edit Consumable' : 'Edit Rental Item', ok: 'Save Changes', admin: true,
+    body(ctx) {
+      if (ctx.kind === 'consumable') {
+        const c = ctx.saved = record(state.consumables, 'consumable_id', ctx.id, 'Consumable');
+        return note(`To add a delivery, use Mark Restocked instead; this sets the stock count to what you type.${c.last_restocked_at ? ` Last restocked ${fmtDate(c.last_restocked_at)}.` : ''}`)
+          + itemNameAndCode() + consumableFields();
+      }
+      const i = ctx.saved = record(state.inventory, 'item_id', ctx.id, 'Item');
+      const busy = i.qty_total - i.qty_available;
+      return note(`${i.qty_available} on hand of ${i.qty_total} owned${busy ? ` (${busy} out on rent or out of service, so you can't own fewer than that)` : ''}.`)
+        + itemNameAndCode() + rentalFields(i.image);
+    },
+    fill: ({ kind, saved: s }) => kind === 'consumable'
+      ? { name: s.name, code: s.item_code, stock: s.current_level, unit: s.unit, reorder: s.reorder_level }
+      : { name: s.name, code: s.item_code, category: s.category, qty: s.qty_total, price: s.rental_price, itemDesc: s.description },
+    async run({ kind, saved: s }) {
+      const consumable = kind === 'consumable';
+      const body = changed(s, consumable ? readConsumable() : readRental());
+      if (isEmpty(body)) return NO_CHANGES;
+      if (consumable) await api.consumables.update(s.consumable_id, body);
+      else await api.inventory.update(s.item_id, body);
+      return `${val('name')} updated`;
+    },
+  },
+
+  archived: {
+    title: ctx => ARCHIVES[ctx.kind].title, cancel: 'Close', admin: true,
+    async body(ctx) {
+      const a = ARCHIVES[ctx.kind];
+      const rows = await a.load();
+      return note('Archived records are hidden from lists and new bookings but keep their history. Restore brings them back.')
+        + table(['ID', ...a.head, ''], rows.map(r => {
+          const [resource, id, name] = a.key(r);
+          return `<tr>${idCell(id)}${a.row(r).map(v => `<td>${esc(v)}</td>`).join('')}`
+            + `<td><button class="btn teal" data-restore="${resource}:${id}" data-kind="${ctx.kind}" data-name="${esc(name)}">Restore</button></td></tr>`;
+        }));
     },
   },
 
@@ -167,7 +370,7 @@ export const MODALS = {
   avail: {
     title: 'Check Date Availability', ok: 'Check',
     body: () => field('date', 'Event Date', 'date', { req: true, attrs: `value="${isoDate()}"` })
-      + select('item', 'Item', [['', 'All items'], ...state.inventory.map(i => [i.item_id, i.name])])
+      + select('item', 'Item', [['', 'All items'], ...state.inventory.map(i => [i.item_id, `${i.item_code ? `${i.item_code} · ` : ''}${i.name}`])])
       + '<div id="modalResult"></div>',
     async run() {
       const date = val('date');
@@ -176,7 +379,7 @@ export const MODALS = {
       const rows = val('item') ? items.filter(i => String(i.item_id) === val('item')) : items;
       const booked = state.events.filter(e => e.event_date === date && e.status !== 'Cancelled').length;
       $('#modalResult').innerHTML = note(booked ? `May event na sa date na ito (${booked} booked).` : 'Available ang date.')
-        + table(['Item', 'Free', 'Owned'], rows.map(i => `<tr><td>${esc(i.name)}</td><td class="${i.qty_free ? 'g' : 'r'}">${i.qty_free}</td><td>${i.qty_total}</td></tr>`));
+        + table(['ID', 'Item', 'Free', 'Owned'], rows.map(i => `<tr>${idCell(i.item_id)}<td>${esc(i.name)}</td><td class="${i.qty_free ? 'g' : 'r'}">${i.qty_free}</td><td>${i.qty_total}</td></tr>`));
       return 'keep';
     },
   },
@@ -188,9 +391,9 @@ export const MODALS = {
       const date = val('date');
       if (!date) return false;
       const sheet = await api.pullsheet.get(date);
-      const html = table(['Event', 'Time', 'Venue'], sheet.events.map(e => `<tr><td>#${e.event_id} ${esc(e.client_name)}</td><td>${fmtTime(e.start_time)}</td><td>${esc(e.venue_name || '—')}</td></tr>`))
-        + table(['Item', 'Category', 'Qty', 'Status'], sheet.items.map(i => `<tr><td>${esc(i.name)}</td><td>${esc(i.category || '—')}</td><td>${i.qty_needed}</td><td>${esc(i.status)}</td></tr>`))
-        + (sheet.consumables.length ? table(['Consumable', 'Qty'], sheet.consumables.map(c => `<tr><td>${esc(c.name)}</td><td>${c.qty_needed} ${esc(c.unit)}</td></tr>`)) : '');
+      const html = table(['ID', 'Event', 'Time', 'Venue'], sheet.events.map(e => `<tr>${idCell(e.event_id)}<td>${esc(e.client_name)}${e.event_type ? ` · ${esc(e.event_type)}` : ''}</td><td>${fmtTime(e.start_time)}</td><td>${esc(venueLabel(e))}</td></tr>`))
+        + table(['ID', 'Code', 'Item', 'Category', 'Qty', 'Status'], sheet.items.map(i => `<tr>${idCell(i.item_id)}<td>${esc(i.item_code || '—')}</td><td>${esc(i.name)}</td><td>${esc(i.category || '—')}</td><td>${i.qty_needed}</td><td>${esc(i.status)}</td></tr>`))
+        + (sheet.consumables.length ? table(['ID', 'Consumable', 'Qty'], sheet.consumables.map(c => `<tr>${idCell(c.consumable_id)}<td>${esc(c.name)}</td><td>${c.qty_needed} ${esc(c.unit)}</td></tr>`)) : '');
       $('#modalResult').innerHTML = `<label>Pull sheet for ${fmtDate(date)}</label>${html}<div class="row"><button class="btn blue" id="printSheet" type="button">Print</button></div>`;
       $('#printSheet').onclick = () => printSheet(`Pull sheet — ${fmtDate(date)}`, html);
       return 'keep';

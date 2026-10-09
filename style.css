@@ -198,5 +198,84 @@ button:focus-visible,aside a:focus-visible,.box h3 a:focus-visible{outline:2px s
 .pkg-thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
 .pkg-thumb.none{display:grid;place-items:center;font-size:8px;color:#8a948b;background:#f1f3ee;text-align:center}
 .pkg-preview{display:block;width:100%;max-height:170px;object-fit:cover;border-radius:6px;margin-top:8px;border:1px solid var(--line)}.pkg-preview[hidden]{display:none}
+.pic-remove{margin-top:6px}
 .modal input[type=file]{padding:6px;background:#fff;border:1px dashed var(--teal);cursor:pointer}
 button.ck{border:0;background:none;padding:0;cursor:pointer;vertical-align:middle}
+
+/* admin login screen: shown instead of the app until someone signs in */
+.gate{display:none}
+body.locked aside,body.locked main{display:none}
+body.locked .gate{display:grid;place-items:center;flex:1;min-height:100vh;padding:24px 16px;background:radial-gradient(circle at 20% 10%,#2a8f8333,transparent 45%),radial-gradient(circle at 85% 90%,#5fe3b533,transparent 40%),var(--side)}
+.gate-card{background:#fff;border-radius:14px;padding:28px 26px;width:360px;max-width:100%;box-shadow:0 20px 50px #0006}
+.gate-logo{width:56px;display:block;margin:0 auto 8px}
+.gate-card h1{text-align:center;font-size:20px;color:var(--side)}
+.gate-card .sub{text-align:center;margin:4px 0 14px}
+.gate-card label{display:block;font-size:11px;color:#666;margin:10px 0 4px}
+.gate-card input{width:100%;background:#a9c4bf55;border:1px solid transparent;border-radius:6px;padding:10px;font-size:13px;outline:none}
+.gate-card input:focus{border-color:var(--teal);background:#fff}
+.gate-err{color:#c03c3c;font-size:11px;min-height:16px;margin-top:8px}
+.gate-btn{width:100%;padding:11px;font-size:13px;font-weight:700;margin-top:4px}
+.gate-back{display:block;text-align:center;margin-top:14px;font-size:11px;color:var(--teal)}
+aside a.store-link{margin-top:10px;border:1px dashed #ffffff40;color:#bfe9dd;text-decoration:none}
+a.account-note{display:block;color:var(--teal);text-decoration:none}
+
+/* online orders + walk-in customers */
+.box.orders{margin-bottom:14px}
+.pill.web{background:#bcdcf2;color:#2b5f86;margin-left:4px}
+.walkin{border-left:3px solid var(--mint);padding:2px 0 6px 10px;margin:6px 0}
+.order-notes{white-space:pre-line;background:#f4f8f7;border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.5}
+
+/* form rows, address blocks and field-level validation */
+.frow2,.frow3{display:grid;gap:0 10px}
+.frow2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.frow3{grid-template-columns:repeat(auto-fit,minmax(105px,1fr))}
+@media(max-width:600px){.frow2,.frow3{grid-template-columns:1fr}}
+fieldset.addr{border:1px solid var(--line);border-radius:6px;padding:4px 10px 10px;margin:10px 0 4px}
+fieldset.addr legend{font-size:10px;color:var(--teal);font-weight:600;padding:0 4px}
+.hint{display:block;font-size:9.5px;color:#667267;margin-top:3px;line-height:1.4}
+.hint.inline{display:inline;margin:0}
+.ferr{display:block;font-size:9.5px;color:#b3261e;margin-top:3px}
+input.invalid,select.invalid,textarea.invalid{border-color:#b3261e!important;background:#fff6f5!important}
+.other-text{margin-top:6px}
+.form textarea{width:100%;background:#a9c4bf55;border:1px solid transparent;border-radius:4px;padding:8px;font-size:11px;outline:none;resize:vertical}
+.form textarea:focus,.form select:focus{border-color:var(--teal);background:#fff}
+.modal textarea{resize:vertical;line-height:1.5}
+.modal.wide{width:640px}
+td.code{font-family:var(--font-data);font-size:10px;white-space:nowrap}
+
+/* phone number: country code dropdown beside the digits */
+.phone{display:flex;gap:6px}.phone select.cc{width:auto;flex:none}.phone input{flex:1;min-width:0}
+
+/* database tab: table browser and change console */
+aside a[hidden]{display:none}
+.dbgrid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
+.dblist{display:grid;gap:4px;max-height:440px;overflow:auto}
+.dbt{display:grid;gap:2px;text-align:left;border:1px solid #d5dccd;border-radius:2px;background:#f8faf5;padding:7px 9px;cursor:pointer;color:var(--txt)}
+.dbt b{font-family:var(--font-data);font-size:11px}.dbt small{font-size:9px;color:#737e70}
+.dbt.on{background:#e8f0dc;border-color:#527a47;box-shadow:inset 3px 0 #527a47}
+.dbpager{display:flex;align-items:center;gap:6px}.dbpager small{color:#667267;font-family:var(--font-data)}
+.dbview .tools .pt{margin:0;font-family:var(--font-data)}
+.dbtable th{font-family:var(--font-data);font-weight:600}
+.dbtable td.dbc{font-family:var(--font-data);font-size:10px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;padding:6px 10px}
+.dbtable i.null{color:#a3aba1}
+.console{margin-top:14px;border:1px solid #1d3024;border-radius:3px;background:#141d17;color:#d4dfcf;box-shadow:0 2px 6px rgba(20,35,22,.25)}
+.console-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #2c3d30;font-size:11px;flex-wrap:wrap}
+.console-bar b{color:#e9efdf}
+.live{font-family:var(--font-data);font-size:10px}.live.on{color:#8fd16a}.live.off{color:#e0a458}
+.console-tools{margin-left:auto;display:flex;gap:6px}
+.console-tools select,.console-tools button{background:#1f2c22;color:#d4dfcf;border:1px solid #3a4f3e;border-radius:2px;padding:4px 8px;font-size:10px;cursor:pointer}
+.console-out *,.dbc *{font-family:var(--font-data)}
+.console-out{height:300px;overflow:auto;padding:6px 0;font-family:var(--font-data);font-size:11px;line-height:1.55}
+.console-empty{padding:6px 12px;color:#7d8b7f}
+.ln summary{padding:1px 12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;list-style:none}
+.ln summary::-webkit-details-marker{display:none}
+.ln summary:hover,.ln[open] summary{background:#1f2c22}
+.ln .t{color:#7d8b7f}.ln .u{color:#9cc7d0}.ln .n{color:#a3ae9f}.ln .src{color:#7d8b7f}
+.ln .a{font-weight:600;display:inline-block;min-width:52px}.ln .a.ins{color:#8fd16a}.ln .a.upd{color:#e6c35c}.ln .a.del{color:#ef8a7a}
+.ln .tb{color:#f0f3ea;text-decoration:underline dotted;cursor:pointer}
+.ln pre{margin:0 12px 6px 24px;padding:6px 10px;background:#0d140f;border-left:2px solid #3a4f3e;white-space:pre-wrap;word-break:break-all;color:#c2cdbd;font-family:var(--font-data);font-size:10px}
+.ln pre .p{color:#9cc7d0}
+@media(max-width:1000px){.dbgrid{grid-template-columns:1fr}.dblist{max-height:200px}}
+
+/* record ids, first column of every table */
+td.id{font-family:var(--font-data);font-size:10px;color:#667267;white-space:nowrap;font-variant-numeric:tabular-nums}

@@ -1,109 +1,60 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Laetitia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laetitia · Event Styling &amp; Rentals</title>
+<meta name="description" content="Event styling, decor and rentals for weddings, birthdays, debuts and corporate events. Book a package or rent items online.">
+<link rel="icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-</head><body><svg width="0" height="0" style="position:absolute"><symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol><symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol><symbol id="i-tgt" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-rot" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol><symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol><symbol id="i-peso" viewBox="0 0 24 24"><path d="M7 21V4h6a4 4 0 0 1 0 8H7"/><path d="M5 8h12M5 11h12"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol><symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 2h6v4H9z"/></symbol><symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol><symbol id="i-ring" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></symbol><symbol id="i-chk" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></symbol></svg>
-<aside>
- <div class="brand"><img src="logo.png" alt="Laetitia logo">Laetitia</div>
- <a data-p="dash" class="on"><svg class="i "><use href="#i-grid"/></svg> Dashboard</a><a data-p="events"><svg class="i "><use href="#i-cal"/></svg> Events</a><a data-p="pkg"><svg class="i "><use href="#i-spark"/></svg> Packages</a><a data-p="inv"><svg class="i "><use href="#i-tgt"/></svg> Inventory</a><a data-p="ret"><svg class="i "><use href="#i-rot"/></svg> Returns</a><a data-p="pay"><svg class="i "><use href="#i-card"/></svg> Payments &amp; Clients</a>
- <div class="deco"><img src="logo.png" alt=""></div>
-</aside>
-<main>
- <div class="top"><div class="search"><svg class="i "><use href="#i-search"/></svg><input placeholder="Search events, clients, inventory..."></div><div class="date" id="today"></div><div class="notif-wrap"><button class="bell" id="notifBtn" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false"><svg class="i "><use href="#i-bell"/></svg><span class="notif-count" id="notifCount" hidden>0</span></button><div class="notif-panel hidden" id="notifPanel" aria-live="polite"><div class="notif-header"><h3>Notifications</h3><button class="close-x" id="closeNotif" type="button" aria-label="Close notifications">×</button></div><div class="notif-list" id="notifList"></div></div></div>
-  <div class="account-wrap"><button class="user account-trigger" id="accountBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"><span class="av" id="uInit">G</span><span class="account-copy"><b id="uName">Guest</b><br><span id="uRole">Guest booking</span></span><svg class="i "><use href="#i-chev"/></svg></button><div class="account-menu hidden" id="accountMenu" role="menu" aria-labelledby="accountBtn"><p class="account-status" id="accountStatus">Browsing as a guest</p><button type="button" role="menuitem" data-account-action="login" id="adminLoginAction">Admin log in</button><button type="button" role="menuitem" data-account-action="book">Book an event</button><button type="button" role="menuitem" data-account-action="logout" id="logoutAction" hidden>Log out</button><p class="account-note">Admins sign in with their Laetitia account.</p></div></div></div>
- 
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shop.css">
+</head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 002 1.6h8.6a2 2 0 002-1.5L22 8H6"/></symbol>
+<symbol id="i-brush" viewBox="0 0 24 24"><path d="M18 2l4 4-9.5 9.5-4-4z"/><path d="M8.5 11.5L6 14a3 3 0 00-1 2.2V20H8.8A3 3 0 0011 19l2.5-2.5"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 006 6L16 13l5 2v4a2 2 0 01-2 2A16 16 0 013 5a2 2 0 012-2z"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.6 7.1L3 21l1.9-5.4A8 8 0 1121 12z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+</defs></svg>
 
- <!-- DASHBOARD -->
- <section class="page on" id="dash">
-  <h1>Dashboard</h1><div class="sub">Overview of your operations</div>
-  <div class="cards">
-   <div class="stat"><div class="ic t"><svg class="i "><use href="#i-cal"/></svg></div><div><small>Upcoming Events</small><b id="sEvents">0</b><small>this week</small></div></div>
-   <div class="stat"><div class="ic b"><svg class="i "><use href="#i-doc"/></svg></div><div><small>Pending Inquiries</small><b id="sInq">0</b><small>Awaiting approval</small></div></div>
-   <div class="stat"><div class="ic g"><svg class="i "><use href="#i-tgt"/></svg></div><div><small>Items out on rent</small><b id="sOut">0</b><small>Currently deployed</small></div></div>
-   <div class="stat"><div class="ic r"><svg class="i "><use href="#i-alert"/></svg></div><div><small>Low Stock Alerts</small><b id="sLow">0</b><small>Restock needed</small></div></div>
-   <div class="stat"><div class="ic p"><svg class="i "><use href="#i-peso"/></svg></div><div><small>Outstanding Balance</small><b id="sBal">₱0</b><small>Unpaid</small></div></div>
-  </div>
-  <div class="grid2">
-   <div class="box"><h3><span><svg class="i "><use href="#i-cal"/></svg> <span class="tt">Upcoming Events<small>Next 4 days</small></span></span> <a data-p="events">View calendar <svg class="i "><use href="#i-arrow"/></svg></a></h3>
-    <div class="tw"><table><thead><tr><th>Date and time</th><th>Client name</th><th>Venue/ Address</th><th>Package</th><th>Status</th><th>Actions</th></tr></thead><tbody id="dEv"></tbody></table></div></div>
-   <div class="box"><h3><span><svg class="i "><use href="#i-zap"/></svg> <span class="tt">Quick Actions<small>Common tasks and shortcuts</small></span></span></h3><div class="qa">
-     <button class="p" data-m="event"><svg class="i "><use href="#i-plus"/></svg> New booking / Event</button><button class="o" data-m="client"><svg class="i "><use href="#i-plus"/></svg> New Client</button><button class="o" data-m="item"><svg class="i "><use href="#i-plus"/></svg> Add Inventory Item</button><button class="o" data-m="package"><svg class="i "><use href="#i-plus"/></svg> Add Package</button><button data-m="avail"><svg class="i "><use href="#i-clip"/></svg> Check Date Availability</button><button data-m="pull"><svg class="i "><use href="#i-doc"/></svg> Generate Pull Sheet</button><button data-m="payment"><svg class="i "><use href="#i-card"/></svg> Record Payment</button></div></div>
-  </div>
-  <div class="grid3">
-   <div class="box"><h3><span><svg class="i "><use href="#i-ring"/></svg> <span class="tt">Asset Returns and Recovery Watchlist<small>Items expected back</small></span></span> <a data-p="ret">View all <svg class="i "><use href="#i-arrow"/></svg></a></h3>
-    <div class="tw"><table><thead><tr><th>Item Name</th><th>Renter/Event</th><th>Expected Return</th><th>Status</th><th>Actions</th></tr></thead><tbody id="dRet"></tbody></table></div>
-    <div class="row"><button class="btn blue" data-m="returned">Mark returned</button><button class="btn blue" data-m="damage">Damage / missing fee</button><button class="btn blue" data-m="deposit">Charge Security Deposit</button></div></div>
-   <div class="box"><h3><span><svg class="i "><use href="#i-clip"/></svg> <span class="tt">Daily Pull Sheet<small id="pullDate"></small></span></span> <a data-p="events">View all <svg class="i "><use href="#i-arrow"/></svg></a></h3>
-    <div class="tw"><table><thead><tr><th>Item</th><th>Category</th><th>Qty. Needed</th><th>Status</th></tr></thead><tbody id="dPull"></tbody></table></div>
-    <div class="row"><button class="btn blue" data-m="pull">Generate Pull Sheet</button></div></div>
-   <div class="box"><h3><span><svg class="i "><use href="#i-card"/></svg> <span class="tt">Pending Receivables/Balance Tracker<small>Upcoming balances</small></span></span> <a data-p="pay">View all <svg class="i "><use href="#i-arrow"/></svg></a></h3>
-    <div class="tw"><table><thead><tr><th>Client Name</th><th>Event Date</th><th>Total Contract</th><th>Paid Amount</th><th>Remaining</th></tr></thead><tbody id="dRec"></tbody></table></div>
-    <div class="row"><button class="btn blue" data-m="reminder">Send Reminder</button><button class="btn blue" data-m="payment">Log Payment</button></div></div>
-   <div class="box"><h3><span><svg class="i "><use href="#i-tgt"/></svg> <span class="tt">Low Consumables Tracker<small>Stock requiring attention</small></span></span> <a data-p="inv">View all <svg class="i "><use href="#i-arrow"/></svg></a></h3>
-    <div class="tw"><table><thead><tr><th>Item Name</th><th>Current Stock</th><th>Reorder Level</th><th>Status</th><th>Action</th></tr></thead><tbody id="dLow"></tbody></table></div></div>
-  </div>
- </section>
+<a class="skip" href="#view">Skip to content</a>
+<header class="nav" id="nav">
+ <div class="wrap nav-in">
+  <a class="brand" href="#/"><img src="logo.png" alt="">Laetitia</a>
+  <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
+  <nav class="nav-links" id="navLinks" aria-label="Main">
+   <a href="#/" data-nav="home">Home</a>
+   <a href="#/packages" data-nav="packages">Packages</a>
+   <a href="#/rentals" data-nav="rentals">Rentals</a>
+   <a href="#/track" data-nav="track">Track booking</a>
+   <a href="#/contact" data-nav="contact">Contact</a>
+  </nav>
+  <a class="cart-btn" href="#/cart" aria-label="Your order"><svg class="i"><use href="#i-cart"/></svg><span>Your order</span><b class="count" id="cartCount" hidden>0</b></a>
+ </div>
+</header>
 
- <!-- EVENTS -->
- <section class="page" id="events">
-  <h2 class="sec big">Booking/Event</h2>
-  <div class="book">
-   <div class="panel form"><h3 class="pt">Create new Booking / Event</h3>
-    <label for="bClient">Client <span class="req">*</span></label><select id="bClient" required></select>
-    <label for="bDate">Event Date <span class="req">*</span></label><input id="bDate" type="date" required>
-    <label for="bTime">Event Time</label><input id="bTime" type="time">
-    <label for="bVenue">Venue / Address</label><input id="bVenue" placeholder="Venue/Address">
-    <label for="bPkg">Event or package <span class="req">*</span></label><select id="bPkg" data-pkgsel="b" required></select><input id="bCustom" class="pkg-custom" placeholder="Describe your custom / self order" maxlength="255" hidden>
-    <label for="bContract">Contract value</label><input id="bContract" type="number" min="0" step="0.01" placeholder="Blank = package price">
-    <label>Assigned Rental Items</label>
-    <div class="tw"><table class="mini"><thead><tr><th>Item</th><th>Category</th><th>Qty</th><th></th></tr></thead><tbody id="bItems"></tbody></table></div>
-    <label for="bPay">Payment / Downpayment</label><input id="bPay" type="number" min="0" step="0.01" placeholder="₱">
-    <div class="row"><button class="btn red" id="bCancel">Cancel</button><button class="btn teal" id="bSubmit">Submit Booking</button></div></div>
-   <div class="panel"><h3 class="pt"><svg class="i "><use href="#i-cal"/></svg> Events</h3>
-    <div class="tw"><table><thead><tr><th>Date and Time</th><th>Client name</th><th>Venue/ Address</th><th>Package</th><th>Status</th></tr></thead><tbody id="evT"></tbody></table></div></div>
-  </div>
- </section>
+<main id="view" tabindex="-1"></main>
 
- <!-- PACKAGES -->
- <section class="page" id="pkg">
-  <h2 class="sec">Package Management</h2>
-  <div class="panel"><div class="tools"><button class="btn" data-m="package">Add new Package</button><span><button class="btn red" id="delAllPkg">Delete All Packages</button></span></div>
-   <div class="tw"><table><thead><tr><th>Picture</th><th>Package Name</th><th>Type</th><th>Price</th><th>Description</th><th>Actions</th></tr></thead><tbody id="pkgT"></tbody></table></div></div>
- </section>
+<footer class="foot">
+ <div class="wrap foot-in">
+  <div class="foot-brand"><a class="brand" href="#/"><img src="logo.png" alt="">Laetitia</a><p>Event styling, decor and rentals.<br><i>Steady as she goes.</i></p></div>
+  <div><h4>Explore</h4><a href="#/packages">Packages</a><a href="#/rentals">Rental items</a><a href="#/checkout">Request a custom order</a></div>
+  <div><h4>Your booking</h4><a href="#/cart">Your order</a><a href="#/track">Track a booking</a><a href="#/contact">Contact &amp; FAQs</a></div>
+  <div><h4>Staff</h4><a href="admin" class="admin-link"><svg class="i"><use href="#i-lock"/></svg>Admin dashboard</a></div>
+ </div>
+ <div class="wrap foot-base">© <span id="year"></span> Laetitia. All rights reserved.</div>
+</footer>
 
- <!-- INVENTORY -->
- <section class="page" id="inv">
-  <h2 class="sec">Inventory Management</h2>
-  <div class="panel"><div class="tools"><div class="sbox"><svg class="i "><use href="#i-search"/></svg><input id="invQ" placeholder="Search inventory..."></div><span></span></div>
-   <div class="tools"><button class="btn" data-m="item">Add new Item</button><span><button class="btn" id="restockAll">Mark All Restocked</button> <button class="btn red" id="delAllInv">Delete All Items</button></span></div>
-   <div class="tw"><table><thead><tr><th>Item Name</th><th>Category <svg class="i "><use href="#i-chev"/></svg></th><th>Quantity <svg class="i "><use href="#i-chev"/></svg></th><th>Status <svg class="i "><use href="#i-chev"/></svg></th><th>Actions</th></tr></thead><tbody id="invT"></tbody></table></div></div>
- </section>
-
- <!-- RETURNS -->
- <section class="page" id="ret">
-  <h2 class="sec">Returns</h2>
-  <div class="panel"><div class="tw"><table><thead><tr><th>Item Name</th><th>Renter/Event</th><th>Expected Return</th><th>Status</th><th>Actions</th></tr></thead><tbody id="retT"></tbody></table></div>
-  <div class="row"><button class="btn blue" data-m="returned">Mark returned</button><button class="btn blue" data-m="damage">Damage / missing fee</button><button class="btn blue" data-m="deposit">Charge Security Deposit</button></div></div>
- </section>
-
- <!-- PAYMENTS & CLIENTS -->
- <section class="page" id="pay">
-  <h2 class="sec">Client Management</h2>
-  <div class="panel"><div class="tools"><div class="sbox"><svg class="i "><use href="#i-search"/></svg><input id="clQ" placeholder="Search clients..."></div><span></span></div>
-   <div class="tools"><button class="btn" data-m="client">Add new Client</button><button class="btn red" id="delAllCl">Delete all</button></div>
-   <div class="tw"><table><thead><tr><th>Client Name</th><th>Event <svg class="i "><use href="#i-chev"/></svg></th><th>Total <svg class="i "><use href="#i-chev"/></svg></th><th>Balance <svg class="i "><use href="#i-chev"/></svg></th><th>Actions</th></tr></thead><tbody id="clT"></tbody></table></div></div>
-  <h2 class="sec gap">Payment Pending</h2>
-  <div class="panel"><div class="tools"><div class="sbox"><svg class="i "><use href="#i-search"/></svg><input id="ppQ" placeholder="Search Client..."></div><span></span></div>
-   <div class="tools"><span></span><span><button class="btn" data-m="payment">Record Payment</button> <button class="btn red" data-m="reminder">Send All Reminders</button></span></div>
-   <div class="tw"><table><thead><tr><th>Client Name</th><th>Contract <svg class="i "><use href="#i-chev"/></svg></th><th>Paid <svg class="i "><use href="#i-chev"/></svg></th><th>Remaining <svg class="i "><use href="#i-chev"/></svg></th><th></th></tr></thead><tbody id="ppT"></tbody></table></div></div>
- </section>
-</main>
-
-<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
-<div class="toast" id="toast"></div>
-<script type="module" src="js/main.js"></script>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="js/shop/main.js"></script>
 </body></html>

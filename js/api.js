@@ -66,6 +66,13 @@ export const api = {
     logout: () => post('/auth/logout'),
     me: () => get('/auth/me'),
   },
+  // Storefront (no login needed).
+  shop: {
+    catalog: () => get('/public/catalog'),
+    order: body => post('/public/orders', body),
+    track: (id, email) => get(`/public/orders/${id}`, { email }),
+    phoneCountries: () => get('/public/phone-countries'),
+  },
   dashboard: () => get('/dashboard'),
   receivables: () => get('/receivables', ALL),
   availability: date => get('/availability', { date, all: true }),
@@ -75,7 +82,10 @@ export const api = {
   },
   clients: {
     list: () => get('/clients', ALL),
+    archived: () => get('/clients', { ...ALL, archived: true }),
+    restore: id => patch(`/clients/${id}/restore`),
     create: body => post('/clients', body),
+    update: (id, body) => patch(`/clients/${id}`, body),
     remove: id => del(`/clients/${id}`),
     removeAll: () => del('/clients', { confirm: true }),
   },
@@ -83,16 +93,22 @@ export const api = {
     list: () => get('/events', ALL),
     get: id => get(`/events/${id}`),
     create: body => post('/events', body),
+    update: (id, body) => patch(`/events/${id}`, body),
     cancel: id => patch(`/events/${id}/cancel`),
   },
   packages: {
     list: () => get('/packages'),
+    archived: () => get('/packages', { archived: true }),
+    restore: id => patch(`/packages/${id}/restore`),
     create: body => post('/packages', body),
+    update: (id, body) => patch(`/packages/${id}`, body),
     remove: id => del(`/packages/${id}`),
     removeAll: () => del('/packages', { confirm: true }),
   },
   inventory: {
     list: () => get('/inventory', ALL),
+    archived: () => get('/inventory', { ...ALL, archived: true }),
+    restore: id => patch(`/inventory/${id}/restore`),
     create: body => post('/inventory', body),
     update: (id, body) => patch(`/inventory/${id}`, body),
     remove: id => del(`/inventory/${id}`),
@@ -101,7 +117,10 @@ export const api = {
   },
   consumables: {
     list: () => get('/consumables', ALL),
+    archived: () => get('/consumables', { ...ALL, archived: true }),
+    restore: id => patch(`/consumables/${id}/restore`),
     create: body => post('/consumables', body),
+    update: (id, body) => patch(`/consumables/${id}`, body),
     restock: (id, qty) => patch(`/consumables/${id}/restock`, { qty }),
     remove: id => del(`/consumables/${id}`),
   },
@@ -112,10 +131,17 @@ export const api = {
   },
   payments: {
     create: body => post('/payments', body),
+    update: (id, body) => patch(`/payments/${id}`, body),
   },
   notifications: {
     list: () => get('/notifications', { limit: 30 }),
     markRead: id => patch(`/notifications/${id}/read`),
+  },
+  // Admins only.
+  database: {
+    tables: () => get('/database/tables'),
+    rows: (name, query) => get(`/database/tables/${encodeURIComponent(name)}`, query),
+    changes: after => get('/database/changes', { after }),
   },
   reminders: {
     send: clientId => post('/reminders', clientId ? { client_id: Number(clientId) } : {}),
