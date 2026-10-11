@@ -7,7 +7,10 @@ import { phoneInputs } from '../phone.js';
 const ico = n => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 
 // Packages without a picture get a soft gradient and an emoji for their event type.
-const ART = { wedding: ['💐', 'a-rose'], birthday: ['🎈', 'a-sky'], debut: ['👑', 'a-gold'], corporate: ['🥂', 'a-sage'] };
+const ART = {
+  wedding: ['💐', 'a-rose'], birthday: ['🎈', 'a-sky'], debut: ['👑', 'a-gold'], corporate: ['🥂', 'a-sage'],
+  'gender reveal': ['🎀', 'a-rose'], 'christening / baptism': ['🕊️', 'a-sky'], anniversary: ['💞', 'a-gold'],
+};
 const art = type => ART[String(type || '').toLowerCase()] || ['✨', 'a-mint'];
 
 const media = (o, type, fallbackEmoji) => {
@@ -16,13 +19,17 @@ const media = (o, type, fallbackEmoji) => {
   return `<span class="art ${cls}" aria-hidden="true">${fallbackEmoji || emoji}</span>`;
 };
 
-const ITEM_ART = { chairs: '🪑', tables: '🍽️', balloons: '🎈', decors: '💐', lights: '💡', linens: '🧵' };
+// Keyed by the inventory categories used in the admin (Furniture, Lighting, ...).
+const ITEM_ART = {
+  furniture: '🪑', tableware: '🍽️', 'balloon stand': '🎈', florals: '💐', lighting: '💡', linens: '🧵',
+  backdrop: '🖼️', signage: '🪧', prop: '🎁',
+};
 const itemEmoji = c => ITEM_ART[String(c || '').toLowerCase()] || '📦';
 
 const sectionHead = (eyebrow, title, more = '') => `<div class="sec-head"><div><span class="eyebrow">${eyebrow}</span><h2>${title}</h2></div>${more}</div>`;
 
-const stepper = (id, qty, max, action = 'draft') => `<div class="step" role="group" aria-label="Quantity">`
-  + `<button type="button" data-${action}="${id}" data-d="-1" aria-label="Fewer"${qty <= 0 ? ' disabled' : ''}>−</button>`
+const stepper = (id, qty, max, action = 'draft', min = 0) => `<div class="step" role="group" aria-label="Quantity">`
+  + `<button type="button" data-${action}="${id}" data-d="-1" aria-label="Fewer"${qty <= min ? ' disabled' : ''}>−</button>`
   + `<output data-q="${id}">${qty}</output>`
   + `<button type="button" data-${action}="${id}" data-d="1" aria-label="More"${qty >= max ? ' disabled' : ''}>+</button></div>`;
 
@@ -41,16 +48,20 @@ export const pkgCard = p => `<article class="card pkg">
   </div></article>`;
 
 const customCard = () => `<article class="card pkg custom">
-  <a class="media" href="#/checkout" aria-label="Request a custom order"><span class="art a-mint" aria-hidden="true">✨</span></a>
-  <div class="body"><span class="chip">Anything else</span><h3><a href="#/checkout">Custom order</a></h3>
+  <a class="media" href="#/build" aria-label="Request a custom order"><span class="art a-mint" aria-hidden="true">✨</span></a>
+  <div class="body"><span class="chip">Anything else</span><h3><a href="#/build">Custom order</a></h3>
    <p class="muted">Tell us your theme and guest count and we'll send a quote.</p>
-   <div class="foot-row"><span class="price small">Priced after review</span><a class="btn sm" href="#/checkout">Request a quote</a></div>
+   <div class="foot-row"><span class="price small">Priced after review</span><a class="btn sm" href="#/build">Request a quote</a></div>
   </div></article>`;
+
+// The quantity picked on a card or item page before pressing Add: starts at 1, so the number
+// shown is always the number added. 0 only when none are left.
+const draftQty = (id, left) => (left ? Math.min(Math.max(store.draft[id] || 1, 1), left) : 0);
 
 const rentCard = it => {
   const inCart = store.cart.lines[it.item_id] || 0;
   const left = Math.max(0, it.qty_available - inCart);
-  const draft = Math.min(store.draft[it.item_id] || 0, left);
+  const draft = draftQty(it.item_id, left);
   return `<article class="card rent">
   <a class="media" href="#/item/${it.item_id}" aria-label="${esc(it.name)}">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : `<span class="art a-mist" aria-hidden="true">${itemEmoji(it.category)}</span>`}</a>
   <div class="body">${it.category ? `<span class="chip">${esc(it.category)}</span>` : ''}
@@ -58,7 +69,7 @@ const rentCard = it => {
    <div class="meta"><span class="price">${peso(it.rental_price)}<small> / piece</small></span><span class="stock ${it.qty_available ? '' : 'out'}">${it.qty_available ? `${it.qty_available} in stock` : 'Out of stock'}</span></div>
    ${it.description ? `<p class="muted clamp">${esc(it.description)}</p>` : ''}
    ${inCart ? `<p class="in-cart">${ico('check')}${inCart} in your order</p>` : ''}
-   <div class="add-row">${stepper(it.item_id, draft, left)}<button class="btn primary" type="button" data-add="${it.item_id}"${left < 1 ? ' disabled' : ''}>Add</button></div>
+   <div class="add-row">${stepper(it.item_id, draft, left, 'draft', 1)}<button class="btn primary" type="button" data-add="${it.item_id}"${left < 1 ? ' disabled' : ''}>Add</button></div>
   </div></article>`;
 };
 
@@ -88,7 +99,7 @@ export const home = guard(() => {
   <div class="grid three">
    <div class="card svc"><span class="svc-ic">${ico('brush')}</span><h3>Event Styling</h3><p>Complete styling and decoration for your special occasion, planned around your theme.</p><a href="#/packages">See packages ${ico('arrow')}</a></div>
    <div class="card svc"><span class="svc-ic">${ico('box')}</span><h3>Decor Rental</h3><p>Chairs, tables, balloons and centerpieces to transform any venue, delivered and set up.</p><a href="#/rentals">Browse rentals ${ico('arrow')}</a></div>
-   <div class="card svc"><span class="svc-ic">${ico('spark')}</span><h3>Custom Setups</h3><p>Have something special in mind? Describe it and we'll put together a quote just for you.</p><a href="#/checkout">Request a quote ${ico('arrow')}</a></div>
+   <div class="card svc"><span class="svc-ic">${ico('spark')}</span><h3>Custom Setups</h3><p>Have something special in mind? Describe it and we'll put together a quote just for you.</p><a href="#/build">Request a quote ${ico('arrow')}</a></div>
   </div></div></section>
 
  <section class="band"><div class="wrap">
@@ -111,7 +122,7 @@ export const home = guard(() => {
 
  <section class="band"><div class="wrap"><div class="cta-band">
   <div><h2>Have something special in mind?</h2><p>Describe your dream setup and we'll send you a quote.</p></div>
-  <a class="btn light lg" href="#/checkout">Request a custom order ${ico('arrow')}</a>
+  <a class="btn light lg" href="#/build">Request a custom order ${ico('arrow')}</a>
  </div></div></section>`;
 });
 
@@ -204,7 +215,7 @@ export const itemDetail = guard(id => {
     <p class="stock ${it.qty_available ? '' : 'out'}">${it.qty_available ? `${it.qty_available} in stock` : 'Out of stock'}</p>
     ${it.description ? `<p class="desc">${esc(it.description)}</p>` : ''}
     ${inCart ? `<p class="note">${ico('check')}${inCart} already in your order.</p>` : ''}
-    <div class="add-row big">${stepper(it.item_id, Math.min(store.draft[it.item_id] || 0, left), left)}<button class="btn primary lg" type="button" data-add="${it.item_id}"${left < 1 ? ' disabled' : ''}>Add to order</button></div>
+    <div class="add-row big">${stepper(it.item_id, draftQty(it.item_id, left), left, 'draft', 1)}<button class="btn primary lg" type="button" data-add="${it.item_id}"${left < 1 ? ' disabled' : ''}>Add to order</button></div>
    </div></div></div>`;
 });
 
@@ -214,7 +225,7 @@ export const cart = guard(() => {
   if (!p && !lines.length) {
     return `<div class="wrap page narrow"><div class="empty-state"><span class="art a-mint" aria-hidden="true">🛒</span>
      <h1>Your order is empty</h1><p class="muted">Choose a package or some rental items, or ask us for a custom setup.</p>
-     <div class="cta center"><a class="btn primary" href="#/packages">Browse packages</a><a class="btn ghost" href="#/rentals">Rent items</a><a class="btn ghost" href="#/checkout">Custom order</a></div></div></div>`;
+     <div class="cta center"><a class="btn primary" href="#/packages">Browse packages</a><a class="btn ghost" href="#/rentals">Rent items</a><a class="btn ghost" href="#/build">Custom order</a></div></div></div>`;
   }
   return `<div class="wrap page"><h1 class="page-title">Your order</h1>
   <div class="split">
@@ -240,58 +251,208 @@ function summary(withButton) {
    ${p ? `<div class="sum-row"><span>${esc(p.name)}</span><b>${peso(p.base_price)}</b></div>` : ''}
    ${lines.map(l => `<div class="sum-row"><span>${esc(l.item.name)} × ${l.qty}</span><b>${peso(l.total)}</b></div>`).join('')}
    ${!p && !lines.length ? '<div class="sum-row"><span>Custom order</span><b>Quoted after review</b></div>' : ''}
-   <div class="sum-total"><span>Estimated total</span><b>${peso(cartTotal())}</b></div>
+   <div class="sum-total"><span>Estimated total</span><b>${!p && !lines.length ? 'To be quoted' : peso(cartTotal())}</b></div>
    <p class="muted small">Nothing is charged online. We confirm availability and the final price, then send payment details.</p>
    ${withButton ? `<a class="btn primary lg block" href="#/checkout">Continue to booking ${ico('arrow')}</a>` : ''}
   </aside>`;
 }
 
-const input = (name, label, attrs = '', req = true) => `<div class="field"><label for="c_${name}">${label}${req ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label><input id="c_${name}" name="${name}" ${attrs}${req ? ' required' : ''}></div>`;
+const REQ = ' <span class="req" aria-hidden="true">*</span>';
 
+// Where a field's problem shows while the visitor fills the form (main.js, live validation).
+// `p` is the form's id prefix: c_ checkout, l_ login, r_ register.
+const fieldError = (name, p = 'c_') => `<small class="ferr" id="${p}${name}Err" data-for="${name}" aria-live="polite"></small>`;
+
+const input = (name, label, attrs = '', req = true, p = 'c_') => `<div class="field"><label for="${p}${name}">${label}${req ? REQ : ''}</label>`
+  + `<input id="${p}${name}" name="${name}" aria-describedby="${p}${name}Err" ${attrs}${req ? ' required' : ''}>${fieldError(name, p)}</div>`;
+
+const passwordInput = (name, label, p, autocomplete, hint = '') => `<div class="field"><label for="${p}${name}">${label}${REQ}</label>`
+  + `<div class="pw"><input id="${p}${name}" name="${name}" type="password" autocomplete="${autocomplete}" maxlength="200" required aria-describedby="${p}${name}Err">`
+  + `<button type="button" class="pwt" data-pw="${p}${name}" aria-pressed="false">Show</button></div>`
+  + (hint ? `<small class="hint">${hint}</small>` : '') + fieldError(name, p) + '</div>';
+
+// The booking form (customer version, from the designer's mockup): the customer's details from
+// their account, what they picked, then the event. Only logged-in customers get here (main.js).
 export const checkout = guard(() => {
-  const custom = !cartPackage() && !cartLines().length;
   const p = cartPackage();
+  const lines = cartLines();
+  const custom = !p && !lines.length;
   const prefType = p && EVENT_TYPES.includes(p.type) ? p.type : '';
-  return `<div class="wrap page"><a class="back" href="#/cart">${ico('back')}Back to your order</a>
-  <h1 class="page-title">${custom ? 'Request a custom order' : 'Booking details'}</h1>
-  <p class="lead">${custom ? 'Tell us what you need and we will send you a quote. Fields marked * are required.' : 'Almost done. Tell us about you and your event. Fields marked * are required.'}</p>
-  <div class="split">
-   <form class="stack" id="checkout" novalidate>
-    <div class="err" id="err" role="alert" tabindex="-1" hidden></div>
-    <fieldset class="card fs"><legend>Your details</legend><div class="fgrid three">
-     ${input('first_name', 'First name', 'autocomplete="given-name" maxlength="50"')}
-     ${input('middle_name', 'Middle name', 'autocomplete="additional-name" maxlength="50"', false)}
-     ${input('last_name', 'Last name', 'autocomplete="family-name" maxlength="50"')}
-    </div><div class="fgrid two">
-     ${input('email', 'Email address', 'type="email" autocomplete="email" maxlength="150"')}
-     <div class="field"><label for="c_phone">Phone number <span class="req" aria-hidden="true">*</span></label>${phoneInputs('c_phone', { name: 'phone', attrs: 'required' })}</div>
-    </div></fieldset>
-    <fieldset class="card fs"><legend>Event</legend><div class="fgrid three">
-     <div class="field"><label for="c_purpose">Type of event <span class="req" aria-hidden="true">*</span></label><select id="c_purpose" name="purpose" required>
-      <option value="">Select</option>${EVENT_TYPES.map(t => `<option${t === prefType ? ' selected' : ''}>${esc(t)}</option>`).join('')}<option value="Other">Other</option></select></div>
-     <div class="field" id="otherWrap" hidden><label for="c_purpose_other">Please specify <span class="req" aria-hidden="true">*</span></label><input id="c_purpose_other" name="purpose_other" maxlength="60" placeholder="e.g. Gender reveal"></div>
+  const pr = store.profile || {};
+  const shown = (label, value) => `<div class="field"><label>${label}</label><input value="${esc(value || '—')}" disabled></div>`;
+  return `<div class="wrap page booking"><a class="back" href="#/cart">${ico('back')}Back to your order</a>
+  <h1 class="page-title">${custom ? 'Request a custom order' : 'Booking / Event'}</h1>
+  <p class="lead">Tell us about your upcoming event. Fields marked * are required.</p>
+  <form class="stack" id="checkout" novalidate>
+   <div class="err" id="err" role="alert" tabindex="-1" hidden></div>
+   <div class="bk-top">
+    <section class="card fs"><h2>Customer information</h2>
+     <div class="fgrid three">${shown('First name', pr.first_name)}${shown('Middle name', pr.middle_name)}${shown('Last name', pr.last_name)}</div>
+     <div class="fgrid two">${shown('Email address', pr.email)}${shown('Contact number', pr.phone)}</div>
+     <p class="hint">From your account. <a href="#/profile">Edit them in My Profile</a>.</p>
+    </section>
+    <div class="bk-picks">${selectionCards(p, lines)}</div>
+   </div>
+   <fieldset class="card fs"><legend>Event information</legend><div class="fgrid three">
+     <div class="field"><label for="c_purpose">Purpose / event${REQ}</label><select id="c_purpose" name="purpose" required aria-describedby="c_purposeErr">
+      <option value="">Select</option>${EVENT_TYPES.map(t => `<option${t === prefType ? ' selected' : ''}>${esc(t)}</option>`).join('')}<option value="Other">Other</option></select>${fieldError('purpose')}</div>
+     <div class="field" id="otherWrap" hidden><label for="c_purpose_other">Please specify${REQ}</label><input id="c_purpose_other" name="purpose_other" maxlength="60" placeholder="e.g. Reunion" aria-describedby="c_purpose_otherErr">${fieldError('purpose_other')}</div>
      ${input('event_date', 'Event date', `type="date" min="${isoDate()}"`)}
-     ${input('start_time', 'Start time', 'type="time"', false)}
-    </div></fieldset>
-    <fieldset class="card fs"><legend>Venue address</legend><div class="fgrid two">
+     ${input('start_time', 'Event time', 'type="time"', false)}
+    </div><div class="fgrid two">
      ${input('street', 'Street / building', 'autocomplete="address-line1" maxlength="150" placeholder="e.g. 12 Rizal St."')}
      ${input('barangay', 'Barangay', 'maxlength="100"')}
-     ${input('city', 'City', 'maxlength="100"', false)}
-     ${input('municipality', 'Municipality', 'maxlength="100"', false)}
-     ${input('province', 'Province', 'maxlength="100"')}
-    </div><p class="hint">Fill in the city or the municipality, whichever applies to the venue.</p></fieldset>
-    <fieldset class="card fs"><legend>${custom ? 'Describe your custom order *' : 'Special notes or requests'}</legend>
-     <label class="sr" for="c_notes">Notes</label><textarea id="c_notes" name="notes" rows="5" maxlength="2000" placeholder="${custom ? 'Theme, colors, guest count, the items you need…' : 'Theme, colors, setup time, anything we should know'}"${custom ? ' required' : ''}></textarea></fieldset>
-    <div class="form-end"><a class="btn ghost" href="#/cart">Back</a><button class="btn primary lg" type="submit" id="submitOrder">Send booking request ${ico('arrow')}</button></div>
-   </form>
-   ${summary(false)}
-  </div></div>`;
+     ${input('city', 'City / Municipality', 'autocomplete="address-level2" maxlength="100" placeholder="e.g. Cabuyao"')}
+     ${input('province', 'Province', 'autocomplete="address-level1" maxlength="100" placeholder="e.g. Laguna"')}
+    </div></fieldset>
+   <fieldset class="card fs"><legend>${custom ? `Describe your custom order${REQ}` : 'Special notes / requests'}</legend>
+    <label class="sr" for="c_notes">Notes</label><textarea id="c_notes" name="notes" rows="5" maxlength="2000" aria-describedby="c_notesErr" placeholder="${custom ? 'Theme, colors, guest count, the items you need… (at least 15 characters)' : 'Theme, colors, setup time, anything we should know'}"${custom ? ' required' : ''}></textarea>${fieldError('notes')}</fieldset>
+   <p class="muted small center">Nothing is charged online. We confirm availability and the final price, then send payment details.</p>
+   <div class="form-end center"><a class="btn cancel lg" href="#/cart">Cancel</a><button class="btn go lg" type="submit" id="submitOrder">Request booking ${ico('arrow')}</button></div>
+  </form></div>`;
 });
 
-const statusPill = s => `<span class="status s-${esc(String(s).toLowerCase())}">${esc(s)}</span>`;
+// "Selected package" and "Selected items" cards beside the customer information.
+function selectionCards(p, lines) {
+  const pkg = p ? `<article class="card pick"><h3>Selected package</h3><b>${esc(p.name)}</b>
+     <div class="pick-media">${media(p, p.type)}</div>
+     <dl><dt>Price</dt><dd>${peso(p.base_price)}</dd>${p.type ? `<dt>Event type</dt><dd>${esc(p.type)}</dd>` : ''}</dl>
+     <a class="btn sm ghost" href="#/build">Change package</a></article>` : '';
+  const items = lines.map(l => `<article class="card pick"><h3>Selected item</h3><b>${esc(l.item.name)}</b>
+     <div class="pick-media">${l.item.image ? `<img src="${esc(l.item.image)}" alt="">` : `<span class="art a-mist" aria-hidden="true">${itemEmoji(l.item.category)}</span>`}</div>
+     <dl><dt>Price</dt><dd>${peso(l.item.rental_price)}</dd><dt>Quantity</dt><dd>${l.qty}</dd><dt>Total price</dt><dd>${peso(l.total)}</dd></dl>
+     <a class="btn sm ghost" href="#/item/${l.item.item_id}">View rental</a></article>`).join('');
+  if (!p && !lines.length) {
+    return `<article class="card pick empty"><h3>Custom order</h3><p class="muted">Nothing picked yet. Build your setup item by item, or describe it in the notes below.</p>
+      <a class="btn primary sm" href="#/build">${ico('spark')}Build my setup</a></article>`;
+  }
+  return `<div class="picks">${pkg}${items}</div>
+   <div class="contract"><span>Contract value <small>(estimate, confirmed by our team)</small></span><b>${peso(cartTotal())}</b><a class="small-link" href="#/build">Add or remove items</a></div>`;
+}
+
+/* ---------- build your own: the kiosk ---------- */
+// Custom orders picked like at a fast-food kiosk: tap a tile to add it, +/- to change the
+// count, and the tray beside it keeps a running total. It fills the same order as the rest of
+// the storefront, so "Continue to booking" goes to the usual booking form.
+
+const PACKAGES_TAB = 'Packages';
+let kioskCat = PACKAGES_TAB;
+export const setKioskCat = c => { kioskCat = c; };
+// The tile or tray line changed last, highlighted briefly so the customer sees where it went.
+export const kioskFlash = { id: null };
+
+const kioskTabs = () => [PACKAGES_TAB, ...new Set(store.items.map(i => i.category || 'Other'))];
+
+function pkgTile(p) {
+  const chosen = String(store.cart.packageId) === String(p.package_id);
+  return `<article class="ktile${chosen ? ' on' : ''}">
+   <div class="kart">${media(p, p.type)}</div>
+   <h3>${esc(p.name)}</h3><p class="kprice">${peso(p.base_price)}</p>
+   <p class="muted small clamp">${esc(p.description || '')}</p>
+   ${chosen ? `<button class="btn sm ghost block" type="button" data-kunpkg>${ico('check')}In your order · Remove</button>`
+    : `<button class="btn primary block" type="button" data-kpkg="${p.package_id}">${ico('plus')}${store.cart.packageId ? 'Switch to this' : 'Add package'}</button>`}
+  </article>`;
+}
+
+function itemTile(i) {
+  const have = store.cart.lines[i.item_id] || 0;
+  const left = i.qty_available - have;
+  return `<article class="ktile${have ? ' on' : ''}${kioskFlash.id === `i${i.item_id}` ? ' flash' : ''}">
+   ${have ? `<span class="kbadge">${have}</span>` : ''}
+   <div class="kart">${i.image ? `<img src="${esc(i.image)}" alt="">` : `<span class="art a-mist" aria-hidden="true">${itemEmoji(i.category)}</span>`}</div>
+   <h3>${esc(i.name)}</h3><p class="kprice">${peso(i.rental_price)}<small> / piece</small></p>
+   <p class="kstock ${left > 0 ? '' : 'out'}">${i.qty_available ? `${Math.max(left, 0)} left` : 'Out of stock'}</p>
+   ${have
+    ? `<div class="kstep"><button type="button" data-ksub="${i.item_id}" aria-label="One less ${esc(i.name)}">−</button><output>${have}</output><button type="button" data-kadd="${i.item_id}" aria-label="One more ${esc(i.name)}"${left < 1 ? ' disabled' : ''}>+</button></div>`
+    : `<button class="btn primary block" type="button" data-kadd="${i.item_id}"${left < 1 ? ' disabled' : ''}>${ico('plus')}Add</button>`}
+  </article>`;
+}
+
+function tray() {
+  const p = cartPackage();
+  const lines = cartLines();
+  const n = (p ? 1 : 0) + lines.reduce((s, l) => s + l.qty, 0);
+  const line = (key, art, name, sub, total, controls) => `<li class="tline${kioskFlash.id === key ? ' flash' : ''}"><span class="tart" aria-hidden="true">${art}</span>
+    <div class="tname"><b>${esc(name)}</b><small>${sub}</small></div>${controls}<b class="ttotal">${total}</b></li>`;
+  return `<aside class="tray" id="tray" aria-label="Your order">
+   <button class="tray-head" type="button" data-ktray aria-expanded="false"><span>${ico('cart')}Your order</span><span class="tcount">${n}</span><b>${peso(cartTotal())}</b></button>
+   <div class="tray-body">
+    <ul class="tlines">
+     ${p ? line('pkg', art(p.type)[0], p.name, 'Package', peso(p.base_price), `<button class="tx" type="button" data-kunpkg aria-label="Remove ${esc(p.name)}">✕</button>`) : ''}
+     ${lines.map(l => line(`i${l.item.item_id}`, itemEmoji(l.item.category), l.item.name, `${peso(l.item.rental_price)} each`, peso(l.total),
+    `<div class="kstep sm"><button type="button" data-ksub="${l.item.item_id}" aria-label="One less">−</button><output>${l.qty}</output><button type="button" data-kadd="${l.item.item_id}" aria-label="One more"${l.qty >= l.item.qty_available ? ' disabled' : ''}>+</button></div>`
+    + `<button class="tx" type="button" data-kdel="${l.item.item_id}" aria-label="Remove ${esc(l.item.name)}">✕</button>`)).join('')}
+    </ul>
+    ${!p && !lines.length ? `<p class="tempty">${ico('cart')}Tap <b>Add</b> on anything to put it here.</p>` : ''}
+    <div class="ttotal-row"><span>Estimated total</span><b>${peso(cartTotal())}</b></div>
+    <a class="btn primary lg block" href="#/checkout">Continue to booking ${ico('arrow')}</a>
+    ${p || lines.length ? '<button class="btn ghost sm block" type="button" data-kclear>Clear my order</button>' : ''}
+    <p class="muted small">Need something not listed? Add it in the booking notes and we'll quote it.</p>
+   </div></aside>`;
+}
+
+export const kiosk = guard(() => {
+  const tabs = kioskTabs();
+  if (!tabs.includes(kioskCat)) kioskCat = tabs[0];
+  const tiles = kioskCat === PACKAGES_TAB ? store.packages.map(pkgTile)
+    : store.items.filter(i => (i.category || 'Other') === kioskCat).map(itemTile);
+  const count = c => (c === PACKAGES_TAB ? (store.cart.packageId ? 1 : 0)
+    : store.items.filter(i => (i.category || 'Other') === c).reduce((s, i) => s + (store.cart.lines[i.item_id] || 0), 0));
+  return `<div class="wrap page kiosk">
+   <div class="khead"><div><span class="eyebrow">Build your own</span><h1 class="page-title">Make your setup</h1>
+    <p class="lead">Start from a package or pick pieces one by one. Tap to add, use − and + to change, and watch your total as you go.</p></div></div>
+   <div class="kbody">
+    <nav class="ktabs" aria-label="Categories">${tabs.map(c => `<button type="button" class="ktab${c === kioskCat ? ' on' : ''}" data-kcat="${esc(c)}" aria-pressed="${c === kioskCat}">
+      <span aria-hidden="true">${c === PACKAGES_TAB ? '✨' : itemEmoji(c)}</span>${esc(c)}${count(c) ? `<b>${count(c)}</b>` : ''}</button>`).join('')}</nav>
+    <section class="kgrid" aria-label="${esc(kioskCat)}">${kioskCat === PACKAGES_TAB ? '<p class="knote muted small">One package per booking. Add extra pieces from the other tabs.</p>' : ''}${tiles.join('') || '<p class="muted">Nothing here yet.</p>'}</section>
+    ${tray()}
+   </div></div>`;
+});
+
+/* ---------- customer accounts ---------- */
+
+// `next` is where to go after logging in (e.g. "checkout"), carried in the URL: #/login/checkout.
+export const login = (next = '') => `<div class="wrap page narrow auth"><div class="card fs auth-card">
+  <h1 class="page-title">Log in</h1>
+  ${next === 'checkout'
+    ? `<p class="note">${ico('lock')}Please log in or create an account to send your booking request. Your order is saved.</p>`
+    : '<p class="muted">Log in to place orders and see your bookings. Staff can log in here too and go straight to the admin dashboard.</p>'}
+  <form id="loginForm" class="stack" novalidate data-next="${esc(next)}">
+   <div class="err" id="loginErr" role="alert" tabindex="-1" hidden></div>
+   ${input('email', 'Email address', `type="email" autocomplete="email" maxlength="150" value="${esc(store.lastOrder?.email || '')}"`, true, 'l_')}
+   ${passwordInput('password', 'Password', 'l_', 'current-password')}
+   <button class="btn primary lg block" type="submit" id="loginBtn">Log in</button>
+  </form>
+  <p class="muted center switch">New to Laetitia? <a href="#/register${next ? `/${esc(next)}` : ''}">Create an account</a></p>
+ </div></div>`;
+
+export const register = (next = '') => `<div class="wrap page narrow auth"><div class="card fs auth-card wide">
+  <h1 class="page-title">Create an account</h1>
+  <p class="muted">An account keeps your details for every booking and lets you follow them in one place. Fields marked * are required.</p>
+  <form id="registerForm" class="stack" novalidate data-next="${esc(next)}">
+   <div class="err" id="registerErr" role="alert" tabindex="-1" hidden></div>
+   <div class="fgrid three">
+    ${input('first_name', 'First name', 'autocomplete="given-name" maxlength="100"', true, 'r_')}
+    ${input('middle_name', 'Middle name', 'autocomplete="additional-name" maxlength="100"', false, 'r_')}
+    ${input('last_name', 'Last name', 'autocomplete="family-name" maxlength="100"', true, 'r_')}
+   </div>
+   <div class="fgrid two">
+    ${input('email', 'Email address', 'type="email" autocomplete="email" maxlength="150"', true, 'r_')}
+    <div class="field"><label for="r_phone">Phone number${REQ}</label>${phoneInputs('r_phone', { name: 'phone', attrs: 'required aria-describedby="r_phoneErr"' })}${fieldError('phone', 'r_')}</div>
+   </div>
+   <div class="fgrid two">
+    ${passwordInput('password', 'Password', 'r_', 'new-password', 'At least 8 characters.')}
+    ${passwordInput('confirm', 'Confirm password', 'r_', 'new-password')}
+   </div>
+   <button class="btn primary lg block" type="submit" id="registerBtn">Create account</button>
+  </form>
+  <p class="muted center switch">Already have an account? <a href="#/login${next ? `/${esc(next)}` : ''}">Log in</a></p>
+ </div></div>`;
+
+export const statusPill = s => `<span class="status s-${esc(String(s).toLowerCase())}">${esc(s)}</span>`;
 
 // Shared by the confirmation page and Track booking.
-function orderCard(o) {
+export function orderCard(o) {
   const what = o.package_name || o.custom_order || 'Custom order';
   return `<div class="card order">
    <div class="order-top"><div><span class="muted small">Reference number</span><p class="ref">#${o.event_id}</p></div>${statusPill(o.status)}</div>
@@ -306,7 +467,7 @@ function orderCard(o) {
    </dl></div>`;
 }
 
-function paymentInfo() {
+export function paymentInfo() {
   const accounts = PAYMENT.filter(a => a.number);
   if (!accounts.length) return '<p>Once your booking is approved, our team will send you the payment details. A downpayment secures your date.</p>';
   return `<p>Once your booking is approved, pay the downpayment to any of these accounts and send us the reference number:</p>
@@ -338,7 +499,7 @@ export const track = (result = null, error = '') => {
    <form class="card fs track-form" id="trackForm" novalidate>
     <div class="fgrid two">
      <div class="field"><label for="t_ref">Reference number</label><input id="t_ref" name="ref" inputmode="numeric" placeholder="e.g. 128" required value="${last ? esc(last.event_id) : ''}"></div>
-     <div class="field"><label for="t_email">Email address</label><input id="t_email" name="email" type="email" autocomplete="email" required value="${last ? esc(last.email) : ''}"></div>
+     <div class="field"><label for="t_email">Email address</label><input id="t_email" name="email" type="email" autocomplete="email" required value="${esc(store.profile?.email || last?.email || '')}"></div>
     </div>
     <button class="btn primary" type="submit" id="trackBtn">Check status</button>
    </form>
@@ -356,7 +517,7 @@ export const contact = () => {
    <aside class="card fs contact-card"><h2>Get in touch</h2>
     ${rows.length ? rows.map(([i, l, v]) => `<div class="contact-row">${ico(i)}<div><small>${l}</small><b>${esc(v)}</b></div></div>`).join('')
     : '<p class="muted">Send us your request through the booking form and our team will contact you using the details you give.</p>'}
-    <a class="btn primary block" href="#/checkout">Send a request</a></aside>
+    <a class="btn primary block" href="#/build">Send a request</a></aside>
   </div></div>`;
 };
 

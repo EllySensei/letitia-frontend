@@ -1,7 +1,8 @@
 // Storefront state: the catalog from the API plus the visitor's order (cart), which is kept
 // in localStorage so it survives a reload.
-import { api } from '../api.js';
+import { api, hasToken, setToken } from '../api.js';
 import { readLocal, writeLocal } from '../storage.js';
+import { ADMIN_TOKEN_KEY } from '../config.js';
 
 const CART_KEY = 'laetitia-cart';
 const ORDER_KEY = 'laetitia-last-order';
@@ -15,7 +16,56 @@ export const store = {
   cart: readLocal(CART_KEY, { packageId: null, lines: {} }),
   draft: {},          // quantity picked on each rental card before pressing Add
   lastOrder: readLocal(ORDER_KEY, null), // order summary from the API, plus the email used
+  user: null,         // the signed-in customer { user_id, username (their email), full_name, role, client_id }
+  profile: null,      // their client details: name, email, phone, address
 };
+
+/* ---------- customer login ---------- */
+
+async function useAccount(user) {
+  store.user = user;
+  store.profile = await api.account.profile();
+}
+
+// Picks up a login saved by an earlier visit. Only customer logins are kept on the storefront.
+export async function loadUser() {
+  if (!hasToken()) return;
+  try {
+    const user = await api.auth.me();
+    if (user.role !== 'customer') throw new Error('not a customer');
+    await useAccount(user);
+  } catch {
+    setToken(null);
+    store.user = store.profile = null;
+  }
+}
+
+// One login form for everyone: a staff or admin account entered here is handed to the admin
+// dashboard (which keeps its own login) and the browser goes there. Returns 'staff' then.
+// The server still checks the role on every request, so this only saves a second login.
+export async function logIn(email, password) {
+  const { token, user } = await api.auth.login(email, password);
+  if (user.role !== 'customer') {
+    writeLocal(ADMIN_TOKEN_KEY, token);
+    location.href = 'admin';
+    return 'staff';
+  }
+  setToken(token);
+  await useAccount(user);
+  return 'customer';
+}
+
+export async function register(details) {
+  const { token, user } = await api.account.register(details);
+  setToken(token);
+  await useAccount(user);
+}
+
+export async function logOut() {
+  try { await api.auth.logout(); } catch {} // the token is dropped locally either way
+  setToken(null);
+  store.user = store.profile = null;
+}
 
 export const findPackage = id => store.packages.find(p => String(p.package_id) === String(id));
 export const findItem = id => store.items.find(i => String(i.item_id) === String(id));

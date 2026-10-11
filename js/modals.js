@@ -6,13 +6,14 @@ import { api } from './api.js';
 import { state, isAdmin } from './state.js';
 import { signIn } from './session.js';
 import {
-  createBooking, bookingProblem, bookingFields, readBooking, venueLabel, packageLabel, EVENT_TYPES, PAST_MSG,
+  venueLabel, packageLabel, EVENT_TYPES, PAST_MSG,
 } from './bookings.js';
 import {
   field, password, textarea, select, choice, choiceVal, nameFields, readName, addressFields, readAddress, val, num, note,
   phoneField, phoneVal, picture, pictureVal, changed,
 } from './form.js';
 import { isoFor } from './phone.js';
+import { loadAccounts } from './views/accounts.js';
 import { $, esc, peso, fmtDate, fmtTime, pill, isoDate, toast, idCell } from './utils.js';
 
 const METHODS = [['Cash', 'Cash'], ['GCash', 'GCash'], ['Bank Transfer', 'Bank Transfer']];
@@ -112,12 +113,38 @@ function printSheet(title, html) {
 }
 
 export const MODALS = {
+  // Accounts tab: a new staff or admin login.
+  newAccount: {
+    title: 'Add staff account', ok: 'Create account', admin: true,
+    body: () => note('Staff can view the dashboard; admins can also change everything. Customers sign up on the storefront.')
+      + field('accName', 'Full name', 'text', { req: true, attrs: 'maxlength="150" autocomplete="off"' })
+      + field('accUser', 'Username', 'text', { req: true, attrs: 'maxlength="60" pattern="[A-Za-z0-9._\\-]{3,60}" autocomplete="off"', hint: '3 to 60 letters, digits, dots, dashes or underscores.' })
+      + field('accPass', 'Password', 'password', { req: true, attrs: 'data-minlen="8" maxlength="200" autocomplete="new-password"', hint: 'At least 8 characters. Give it to them privately.' })
+      + select('accRole', 'Role', [['staff', 'Staff (view only)'], ['admin', 'Admin (full access)']]),
+    async run() {
+      const { full_name: name } = await api.users.create({ full_name: val('accName'), username: val('accUser'), password: $('#f_accPass').value, role: val('accRole') });
+      loadAccounts();
+      return `Account created for ${name}`;
+    },
+    noRefresh: true,
+  },
+
+  resetPassword: {
+    title: ctx => `Reset password: ${ctx.name}`, ok: 'Set password', admin: true,
+    body: () => note('Sets a new password for this account. Tell the person their new password privately.')
+      + field('newPass', 'New password', 'password', { req: true, attrs: 'data-minlen="8" maxlength="200" autocomplete="new-password"', hint: 'At least 8 characters.' }),
+    async run(ctx) {
+      return (await api.users.setPassword(ctx.id, $('#f_newPass').value)).message;
+    },
+    noRefresh: true,
+  },
+
   adminLogin: {
     title: 'Admin log in', ok: 'Log in', public: true,
     body: () => field('username', 'Username', 'text', { req: true, attrs: 'autocomplete="username"' }) + password('password', 'Password'),
     async run() {
       if (!val('username') || !val('password')) return false;
-      await signIn(val('username'), val('password'));
+      if (await signIn(val('username'), val('password')) === 'customer') return 'keep'; // going to the storefront
       return `Welcome, ${state.user.full_name || state.user.username}`;
     },
   },
@@ -149,18 +176,6 @@ export const MODALS = {
       if (isEmpty(body)) return NO_CHANGES;
       await api.clients.update(c.client_id, body);
       return `${val('first')} ${val('last')} updated`;
-    },
-  },
-
-  event: {
-    title: 'New Booking / Event', ok: 'Submit Booking', admin: true, wide: true,
-    body: () => bookingFields(),
-    async run() {
-      const booking = readBooking();
-      const problem = bookingProblem(booking);
-      if (problem) { toast(problem); return 'keep'; }
-      await createBooking(booking);
-      return 'Booking submitted ✓';
     },
   },
 
@@ -336,11 +351,14 @@ export const MODALS = {
     async body(ctx) {
       const a = ARCHIVES[ctx.kind];
       const rows = await a.load();
-      return note('Archived records are hidden from lists and new bookings but keep their history. Restore brings them back.')
+      return note('Archived records are hidden from lists and new bookings but keep their history. Restore brings them back. '
+          + 'Delete permanently removes a record from the database, and only works when no event, package or payment refers to it.')
         + table(['ID', ...a.head, ''], rows.map(r => {
           const [resource, id, name] = a.key(r);
+          const data = `data-kind="${ctx.kind}" data-name="${esc(name)}"`;
           return `<tr>${idCell(id)}${a.row(r).map(v => `<td>${esc(v)}</td>`).join('')}`
-            + `<td><button class="btn teal" data-restore="${resource}:${id}" data-kind="${ctx.kind}" data-name="${esc(name)}">Restore</button></td></tr>`;
+            + `<td class="nowrap"><button class="btn teal" data-restore="${resource}:${id}" ${data}>Restore</button> `
+            + `<button class="btn red" data-purge="${resource}:${id}" ${data}>Delete permanently</button></td></tr>`;
         }));
     },
   },

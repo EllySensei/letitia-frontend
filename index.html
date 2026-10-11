@@ -24,7 +24,18 @@
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
 <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M2 5a2 2 0 012-2h5a3 3 0 013 3v15a2 2 0 00-2-2H2z"/><path d="M22 5a2 2 0 00-2-2h-5a3 3 0 00-3 3v15a2 2 0 012-2h8z"/></symbol>
+<symbol id="i-headset" viewBox="0 0 24 24"><path d="M3 14v-2a9 9 0 0118 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 003.4 0"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-peso" viewBox="0 0 24 24"><path d="M7 21V4h6a4 4 0 010 8H7"/><path d="M5 8h12M5 11h12"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
 </defs></svg>
 
 <a class="skip" href="#view">Skip to content</a>
@@ -36,19 +47,45 @@
    <a href="#/" data-nav="home">Home</a>
    <a href="#/packages" data-nav="packages">Packages</a>
    <a href="#/rentals" data-nav="rentals">Rentals</a>
+   <a href="#/build" data-nav="build">Build your own</a>
    <a href="#/track" data-nav="track">Track booking</a>
    <a href="#/contact" data-nav="contact">Contact</a>
   </nav>
+  <a class="acct-btn" id="acctBtn" href="#/login"><svg class="i"><use href="#i-user"/></svg><span id="acctLabel">Log in</span></a>
   <a class="cart-btn" href="#/cart" aria-label="Your order"><svg class="i"><use href="#i-cart"/></svg><span>Your order</span><b class="count" id="cartCount" hidden>0</b></a>
  </div>
 </header>
+
+<!-- Customer portal (logged-in customers): sidebar and top bar around the same pages. js/shop/portal.js -->
+<aside class="pside" id="pside" hidden>
+ <a class="pbrand" href="#/dashboard"><img src="logo.png" alt="">Laetitia</a>
+ <nav class="pnav" aria-label="My account">
+  <a href="#/dashboard" data-pnav="dashboard"><svg class="i"><use href="#i-grid"/></svg>Dashboard</a>
+  <a href="#/bookings" data-pnav="bookings"><svg class="i"><use href="#i-book"/></svg>My Bookings</a>
+  <a href="#/profile" data-pnav="profile"><svg class="i"><use href="#i-user"/></svg>My Profile</a>
+  <a href="#/support" data-pnav="support"><svg class="i"><use href="#i-headset"/></svg>Support</a>
+  <a href="#/payments" data-pnav="payments"><svg class="i"><use href="#i-card"/></svg>My Payments</a>
+  <a href="#/packages" data-pnav="packages"><svg class="i"><use href="#i-spark"/></svg>Packages</a>
+  <a href="#/rentals" data-pnav="rentals"><svg class="i"><use href="#i-box"/></svg>Rental Items</a>
+ </nav>
+ <div class="pdeco" aria-hidden="true"><img src="logo.png" alt=""></div>
+</aside>
+<div class="ptop" id="ptop" hidden>
+ <div class="psearch" id="pSearch"><svg class="i"><use href="#i-search"/></svg><input id="pQ" placeholder="Search packages, rentals, bookings..." aria-label="Search packages, rentals and your bookings" autocomplete="off" role="combobox" aria-controls="pResults" aria-expanded="false"><div class="presults" id="pResults" role="listbox" hidden></div></div>
+ <div class="pdate" id="pDate"></div>
+ <a class="pcart" href="#/cart" aria-label="Your order"><svg class="i"><use href="#i-cart"/></svg><b class="count" id="pCartCount" hidden>0</b></a>
+ <div class="pbell-wrap"><button class="pbell" id="pBell" type="button" aria-label="Updates on your bookings" aria-haspopup="true" aria-expanded="false"><svg class="i"><use href="#i-bell"/></svg><b class="count" id="pBellCount" hidden>0</b></button>
+  <div class="ppanel" id="pBellPanel" hidden><h3>Updates</h3><div id="pBellList"></div></div></div>
+ <div class="puser-wrap"><button class="puser" id="pUser" type="button" aria-haspopup="true" aria-expanded="false"><span class="pav" id="pInit"></span><span class="pwho"><b id="pName"></b><small>Customer</small></span><svg class="i"><use href="#i-chev"/></svg></button>
+  <div class="ppanel pmenu" id="pUserMenu" hidden><a href="#/profile">My Profile</a><a href="#/bookings">My Bookings</a><button type="button" data-logout>Log out</button></div></div>
+</div>
 
 <main id="view" tabindex="-1"></main>
 
 <footer class="foot">
  <div class="wrap foot-in">
   <div class="foot-brand"><a class="brand" href="#/"><img src="logo.png" alt="">Laetitia</a><p>Event styling, decor and rentals.<br><i>Steady as she goes.</i></p></div>
-  <div><h4>Explore</h4><a href="#/packages">Packages</a><a href="#/rentals">Rental items</a><a href="#/checkout">Request a custom order</a></div>
+  <div><h4>Explore</h4><a href="#/packages">Packages</a><a href="#/rentals">Rental items</a><a href="#/build">Build a custom order</a></div>
   <div><h4>Your booking</h4><a href="#/cart">Your order</a><a href="#/track">Track a booking</a><a href="#/contact">Contact &amp; FAQs</a></div>
   <div><h4>Staff</h4><a href="admin" class="admin-link"><svg class="i"><use href="#i-lock"/></svg>Admin dashboard</a></div>
  </div>

@@ -7,7 +7,7 @@ const search = sel => $(sel).value.trim().toLowerCase();
 export function renderPayments() {
   const cq = search('#clQ');
   fill('#clT', state.clients.filter(c => `#${c.client_id} ${c.full_name}`.toLowerCase().includes(cq)), 6,
-    c => `<tr>${idCell(c.client_id)}<td>${esc(c.full_name)}</td><td>${c.next_event_date ? `${fmtDate(c.next_event_date)} · ${esc(c.next_event_venue || '')}` : '—'}</td>`
+    c => `<tr>${idCell(c.client_id)}<td>${esc(c.full_name)}${c.has_account ? ' <span class="pill web" title="Has a storefront login">Account</span>' : ''}</td><td>${c.next_event_date ? `${fmtDate(c.next_event_date)} · ${esc(c.next_event_venue || '')}` : '—'}</td>`
       + `<td><b>${peso(c.total_contract)}</b></td><td class="${c.balance > 0 ? 'r' : ''}"><b>${peso(c.balance)}</b></td>`
       + `<td><button class="btn" data-m="editClient" data-id="${c.client_id}">Edit</button> <button class="btn red" data-del="clients:${c.client_id}" data-name="${esc(c.full_name)}">Archive</button></td></tr>`,
     emptyMsg('No clients yet'));

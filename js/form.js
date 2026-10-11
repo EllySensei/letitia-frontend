@@ -159,3 +159,9 @@ export function validateForm(root) {
 
 // Re-checks a flagged field as it's corrected, so the message goes away straight away.
 export const recheck = el => { if (el.classList?.contains('invalid')) showError(el, problemWith(el)); };
+
+// Checks a field as the user leaves it, so mistakes show before Save is pressed.
+export const checkOnLeave = el => {
+  if (!el.matches?.('input:not([type=file]), select, textarea') || el.closest('[hidden]')) return;
+  showError(el, problemWith(el));
+};

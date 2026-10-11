@@ -6,6 +6,7 @@ import { renderInventory } from './inventory.js';
 import { renderReturns } from './returns.js';
 import { renderPayments } from './payments.js';
 import { renderDatabase } from './database.js';
+import { renderAccounts } from './accounts.js';
 
 export { renderInventory, renderPayments };
 
@@ -18,4 +19,5 @@ export function render() {
   renderReturns();
   renderPayments();
   renderDatabase();
+  renderAccounts();
 }

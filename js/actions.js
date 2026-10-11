@@ -4,13 +4,15 @@ import { state, isAdmin } from './state.js';
 import { refresh } from './refresh.js';
 import { signIn, signOut } from './session.js';
 import { createBooking, bookingProblem, readBooking, updatePriceHint, CUSTOM, WALK_IN } from './bookings.js';
-import { validateForm, recheck, showError, OTHER } from './form.js';
+import { validateForm, recheck, checkOnLeave, showError, OTHER } from './form.js';
 import { resizeImage } from './images.js';
 import { openModal, closeModal } from './modal.js';
 import { markRead, stopSound } from './notifications.js';
 import { renderInventory, renderPayments } from './views/index.js';
-import { pickedItems } from './views/events.js';
+import { pickedItems, pickedConsumables, resetBuilder, bindBuilder, filterEvents, clearEventFilters } from './views/events.js';
 import { openDatabase, bindDatabase } from './views/database.js';
+import { bindSearch } from './search.js';
+import { openAccounts, bindAccounts } from './views/accounts.js';
 import { $, $$, showPage, toast, toastError } from './utils.js';
 
 // Wraps an admin-only action: checks the role, reports errors, reloads data afterwards.
@@ -42,6 +44,16 @@ const restoreRecord = adminAction(async el => {
   await api[resource].restore(id);
   openModal('archived', { kind: el.dataset.kind }); // redraw the list without the restored record
   return `${el.dataset.name} restored`;
+});
+
+// Removes an archived record from the database for good. The server refuses (and says why)
+// while any event, package or payment still refers to it.
+const purgeRecord = adminAction(async el => {
+  const [resource, id] = el.dataset.purge.split(':');
+  if (!confirm(`Delete ${el.dataset.name} permanently? This removes it from the database and cannot be undone.`)) return false;
+  const { message } = await api[resource].purge(id);
+  openModal('archived', { kind: el.dataset.kind }); // redraw the list without the deleted record
+  return message;
 });
 
 const NEXT_PULL = { Pending: 'Pulled', Pulled: 'Packed' };
@@ -76,6 +88,44 @@ const restockAll = adminAction(async () => {
   return (await api.inventory.restockAll()).message;
 });
 
+// Database tab. Replaces every business record with the sample set (admin accounts stay).
+const generateSampleData = adminAction(async () => {
+  if (!confirm('Replace ALL clients, events, packages, inventory, payments and returns with sample data?\n\nAdmin accounts are kept. The current records cannot be brought back.')) return false;
+  $('#dbSample').disabled = true;
+  try {
+    const { message } = await api.database.sampleData();
+    openDatabase(); // show the new rows in the table browser
+    return message;
+  } finally {
+    $('#dbSample').disabled = false;
+  }
+});
+
+// Waits until typing pauses, so a search doesn't query the database on every keystroke.
+const debounce = (fn, ms) => {
+  let timer;
+  return () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
+};
+
+// Starter catalog: adds the standard items or packages without touching anything already there.
+const addStarterItems = adminAction(async () => {
+  if (!confirm('Add the standard rental items (arches, backdrops, chairs, tables, lights...) and consumables (balloons, ribbons...)?\n\nItems you already have with the same name are kept as they are.')) return false;
+  return (await api.inventory.starter()).message;
+});
+
+const addStarterPackages = adminAction(async () => {
+  if (!confirm('Add the standard packages (Birthday, Debut, Wedding, Baptism, Corporate, Gender Reveal) with their item lists?\n\nAny items they need are added too. Packages you already have with the same name are kept as they are.')) return false;
+  return (await api.packages.starter()).message;
+});
+
+// Opens the Events tab at the booking builder, ready for a new booking.
+function openBuilder() {
+  if (!isAdmin()) return toast(state.user ? 'Only administrators can do this' : 'Log in first (account menu, top right)');
+  showPage('events');
+  $('#bBuilder').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#f_bclient').focus({ preventScroll: true });
+}
+
 const BOOKING_PANEL = '#events .panel.form';
 
 function clearBookingForm() {
@@ -84,12 +134,12 @@ function clearBookingForm() {
     showError(el, '');
   });
   ['#f_bwalkin', '#f_bpackageCustomBox', '#f_betypeOther'].forEach(sel => $(sel).hidden = true);
-  updatePriceHint('b');
+  resetBuilder();
 }
 
 const submitBookingForm = adminAction(async () => {
   if (!validateForm($(BOOKING_PANEL))) { toast('Please fix the highlighted fields'); return false; }
-  const booking = { ...readBooking('b'), items: pickedItems() };
+  const booking = { ...readBooking('b'), items: pickedItems(), consumables: pickedConsumables() };
   const problem = bookingProblem(booking);
   if (problem) { toast(problem); return false; }
   await createBooking(booking);
@@ -116,18 +166,40 @@ async function submitGate(e) {
   const username = $('#gUser').value.trim();
   const pass = $('#gPass').value;
   if (!username || !pass) { $('#gateErr').textContent = 'Enter your username and password.'; return; }
-  $('#gateBtn').disabled = true;
+  const btn = $('#gateBtn');
+  btn.disabled = true;
+  btn.classList.add('busy');
+  btn.textContent = 'Logging in…'; // checking the password and loading the data takes a moment
   $('#gateErr').textContent = '';
   try {
-    await signIn(username, pass);
+    if (await signIn(username, pass) === 'customer') {
+      $('#gateErr').textContent = 'Customer account: opening your customer dashboard…';
+      return; // the browser is on its way to the storefront
+    }
     $('#gPass').value = '';
     await refresh();
     toast(`Welcome, ${state.user.full_name || state.user.username}`);
   } catch (err) {
     $('#gateErr').textContent = err.message;
+    $('#gPass').select();
   } finally {
-    $('#gateBtn').disabled = false;
+    btn.disabled = false;
+    btn.classList.remove('busy');
+    btn.textContent = 'Log in';
+    // A password left on "Show" would still be readable the next time the login screen appears.
+    hidePassword($('[data-pw="gPass"]'));
   }
+}
+
+function hidePassword(btn) {
+  $('#' + btn.dataset.pw).type = 'password';
+  btn.textContent = 'Show';
+  btn.setAttribute('aria-pressed', 'false');
+}
+
+// Warns while Caps Lock is on, a common reason a correct password is refused.
+function showCapsLock(e) {
+  if (e.getModifierState) $('#gateCaps').hidden = !e.getModifierState('CapsLock');
 }
 
 // Shows `src` in a picture preview (or hides it), with its Remove button to match.
@@ -171,7 +243,6 @@ function reveal(box, show) {
 // Keeps the "leave blank to charge ₱…" hint under the contract value in step with the form.
 function syncPriceHint(el) {
   if (el.dataset?.price !== undefined) updatePriceHint(el.dataset.price, el.dataset.price === 'b' ? pickedItems() : []);
-  else if (el.closest?.('#bItems')) updatePriceHint('b', pickedItems());
 }
 
 function onChange(e) {
@@ -210,7 +281,7 @@ async function onClick(e) {
     setOpen('#accountMenu', '#accountBtn', false);
     const action = accountAction.dataset.accountAction;
     if (action === 'login') openModal('adminLogin');
-    if (action === 'book') openModal('event');
+    if (action === 'book') openBuilder();
     if (action === 'logout') { await signOut(); toast('Logged out'); }
     return;
   }
@@ -233,12 +304,15 @@ async function onClick(e) {
     return openModal('eventDetail', { id: notification.dataset.event });
   }
 
+  // New bookings are made in the Events tab's booking builder.
+  if (t.closest('[data-m="event"]')) return openBuilder();
   const modal = t.closest('[data-m]');
   const page = t.closest('[data-p]');
   if (modal) openModal(modal.dataset.m, { ...modal.dataset });
   else if (page) {
     showPage(page.dataset.p);
     if (page.dataset.p === 'db') openDatabase();
+    if (page.dataset.p === 'acct') openAccounts();
   }
   if (t.closest('[data-close]') || t.id === 'ov') closeModal();
 
@@ -246,6 +320,8 @@ async function onClick(e) {
   if (del) archiveRecord(del);
   const restore = t.closest('[data-restore]');
   if (restore) restoreRecord(restore);
+  const purge = t.closest('[data-purge]');
+  if (purge) purgeRecord(purge);
   const pull = t.closest('[data-pull]');
   if (pull) advancePull(pull);
   const approve = t.closest('[data-approve]');
@@ -256,6 +332,10 @@ export function bindActions() {
   document.addEventListener('click', onClick);
   document.addEventListener('change', onChange);
   document.addEventListener('input', onInput);
+  // Live validation in pop-up forms and the booking form: each field is checked as it's left.
+  document.addEventListener('focusout', e => {
+    if (e.target.closest?.(`#modal, ${BOOKING_PANEL}`)) checkOnLeave(e.target);
+  });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     setOpen('#accountMenu', '#accountBtn', false);
@@ -266,11 +346,21 @@ export function bindActions() {
   $('#delAllCl').onclick = deleteAllClients;
   $('#delAllPkg').onclick = deleteAllPackages;
   $('#restockAll').onclick = restockAll;
+  $('#starterInv').onclick = addStarterItems;
+  $('#starterPkg').onclick = addStarterPackages;
+  $('#dbSample').onclick = generateSampleData;
   $('#bCancel').onclick = clearBookingForm;
   $('#bSubmit').onclick = submitBookingForm;
   $('#gateForm').addEventListener('submit', submitGate);
+  ['keydown', 'keyup'].forEach(type => $('#gPass').addEventListener(type, showCapsLock));
   bindDatabase();
+  bindBuilder();
+  bindAccounts();
+  bindSearch();
 
   $('#invQ').addEventListener('input', renderInventory);
   ['#clQ', '#ppQ'].forEach(sel => $(sel).addEventListener('input', renderPayments));
+  $('#evQ').addEventListener('input', debounce(filterEvents, 250));
+  ['#evStatus', '#evFrom', '#evTo'].forEach(sel => $(sel).addEventListener('change', filterEvents));
+  $('#evClear').onclick = clearEventFilters;
 }

@@ -37,7 +37,26 @@ export const packageLabel = e => e.package_name || (e.custom_order ? `Custom: ${
 // Venue name when there is one, otherwise the address (online orders have only an address).
 export const venueLabel = e => e.venue_name || e.venue_address || '—';
 
-export const bookingFields = (p = '') =>
+// The booking builder on the Events page (views/events.js) places these in its columns:
+// step 1 the client and event, step 2 the package and items, step 3 the price and payment.
+
+// Step 1: who and when, plus the package choice (kept as a hidden select the builder's
+// package tiles set) and the box for describing a custom order.
+export const detailFields = (p = '') => clientEventFields(p)
+  + `<select id="f_${p}package" data-pkgsel data-price="${p}" hidden aria-label="Package">${packageOptionsHtml()}</select>`
+  + customOrderBox(p);
+
+// Step 3: what the client pays.
+export const paymentFields = (p = '') =>
+  field(`${p}contract`, 'Total price charged to the client (₱)', 'number', { attrs: `${MONEY} data-price="${p}"`, hint: ' ' })
+  + '<div class="frow2">'
+  + `<div>${field(`${p}pay`, 'Downpayment received now (₱)', 'number', { attrs: MONEY })}</div>`
+  + `<div>${select(`${p}method`, 'Payment method', METHODS)}</div></div>`;
+
+const customOrderBox = p => `<div id="f_${p}packageCustomBox" hidden>${textarea(`${p}packageCustom`, 'Describe the custom order',
+  'What should we prepare? Theme, colours, number of guests, items you need…', { req: true, rows: 5, attrs: 'maxlength="2000" data-minlen="15"' })}</div>`;
+
+const clientEventFields = (p = '') =>
   select(`${p}client`, 'Client', clientChoices(), { req: true, attrs: `data-walkin="f_${p}walkin"` })
   + `<div class="walkin" id="f_${p}walkin" hidden>${nameFields(`${p}w`)}`
   + '<div class="frow2">'
@@ -49,15 +68,7 @@ export const bookingFields = (p = '') =>
   + `<div>${field(`${p}date`, 'Event date', 'date', { req: true, attrs: `min="${isoDate()}"` })}</div>`
   + `<div>${field(`${p}time`, 'Event time', 'time')}</div></div>`
   + field(`${p}venue`, 'Venue name', 'text', { attrs: 'maxlength="150" placeholder="e.g. Grand Ballroom (optional)"' })
-  + addressFields(`${p}v`, { legend: 'Venue address' })
-  + `<label for="f_${p}package">Package<span class="req" aria-hidden="true">*</span></label>`
-  + `<select id="f_${p}package" required data-pkgsel data-price="${p}">${packageOptionsHtml()}</select>`
-  + `<div id="f_${p}packageCustomBox" hidden>${textarea(`${p}packageCustom`, 'Describe the custom order',
-    'What should we prepare? Theme, colours, number of guests, items you need…', { req: true, rows: 6, attrs: 'maxlength="2000" data-minlen="15"' })}</div>`
-  + field(`${p}contract`, 'Total price charged to the client (₱)', 'number', { attrs: `${MONEY} data-price="${p}"`, hint: ' ' })
-  + '<div class="frow2">'
-  + `<div>${field(`${p}pay`, 'Downpayment received now (₱)', 'number', { attrs: MONEY })}</div>`
-  + `<div>${select(`${p}method`, 'Payment method', METHODS)}</div></div>`;
+  + addressFields(`${p}v`, { legend: 'Venue address' });
 
 // Units × rental price of the extra items picked on the Events page.
 const extrasTotal = items => items.reduce((sum, l) => sum + (state.inventory.find(i => i.item_id === l.item_id)?.rental_price || 0) * l.qty, 0);
@@ -92,6 +103,7 @@ export const readBooking = (p = '') => ({
 // Returns an error message, or null when the booking can be sent.
 export function bookingProblem(b) {
   if (b.event_date < isoDate()) return PAST_MSG;
+  if (!b.package && !b.items?.length) return 'Pick a package, a custom order, or at least one rental item (step 2)';
   return null;
 }
 
@@ -110,6 +122,7 @@ export function createBooking(b) {
     ...b.venue,
     contract_value: b.contract_value, // blank = package price plus extra items
     items: b.items?.length ? b.items : undefined,
+    consumables: b.consumables?.length ? b.consumables : undefined,
     downpayment: b.downpayment > 0 ? { amount: b.downpayment, method: b.method || undefined } : undefined,
   });
 }
